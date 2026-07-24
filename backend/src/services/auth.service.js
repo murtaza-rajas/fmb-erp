@@ -38,7 +38,9 @@ async function login({ email, password, deviceId, deviceInfo, ip, userAgent }) {
   const user = await userRepository.findByEmail(email, { includePassword: true });
 
   if (!user || !(await user.comparePassword(password))) {
-    await loginHistoryRepository.record({ userId: user?._id, ip, userAgent, success: false, failureReason: 'invalid_credentials' });
+    if (user) {
+      await loginHistoryRepository.record({ userId: user._id, ip, userAgent, success: false, failureReason: 'invalid_credentials' });
+    }
     throw ApiError.unauthorized('Invalid email or password');
   }
 
