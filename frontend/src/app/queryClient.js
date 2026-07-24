@@ -1,0 +1,63 @@
+import { QueryClient } from '@tanstack/react-query';
+
+export const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
+// Query key namespaces — kept centralized so invalidation calls (e.g. after
+// a mutation) reference the same strings as the queries do, rather than
+// duplicating the array literal at every call site.
+export const queryKeys = {
+  me: ['auth', 'me'],
+  sessions: ['auth', 'sessions'],
+  notifications: (params) => ['notifications', params],
+  users: (params) => ['users', params],
+  roles: (params) => ['roles', params],
+  permissions: ['permissions'],
+  categories: (params) => ['categories', params],
+  units: (params) => ['units', params],
+  taxes: (params) => ['taxes', params],
+  paymentTerms: (params) => ['paymentTerms', params],
+  stores: (params) => ['stores', params],
+  items: (params) => ['items', params],
+  vendors: (params) => ['vendors', params],
+  vendor: (id) => ['vendors', id],
+  vendorBankAccounts: (id) => ['vendors', id, 'bankAccounts'],
+  vendorItemRates: (id) => ['vendors', id, 'itemRates'],
+  requisitions: (params) => ['requisitions', params],
+  requisition: (id) => ['requisitions', id],
+  purchaseOrders: (params) => ['purchaseOrders', params],
+  purchaseOrder: (id) => ['purchaseOrders', id],
+  poTimeline: (id) => ['purchaseOrders', id, 'timeline'],
+  grns: (params) => ['grns', params],
+  grn: (id) => ['grns', id],
+  stockLedger: (params) => ['stockLedger', params],
+  stockBalance: (params) => ['stockBalance', params],
+  reorderAlerts: ['reorderAlerts'],
+  adjustments: (params) => ['adjustments', params],
+  transfers: (params) => ['transfers', params],
+  debitNotes: (params) => ['debitNotes', params],
+  creditNotes: (params) => ['creditNotes', params],
+  stockReturns: (params) => ['stockReturns', params],
+  invoices: (params) => ['invoices', params],
+  invoice: (id) => ['invoices', id],
+  invoiceMatchHistory: (id) => ['invoices', id, 'matchHistory'],
+  paymentVouchers: (params) => ['paymentVouchers', params],
+  paymentVoucher: (id) => ['paymentVouchers', id],
+  payments: (params) => ['payments', params],
+  advancePayments: (params) => ['advancePayments', params],
+  vendorLedger: (vendorId, params) => ['vendorLedger', vendorId, params],
+  outstandingPayments: ['vendorLedger', 'outstandingPayments'],
+  dashboardSummary: ['dashboard', 'summary'],
+  dashboardVendorPerformance: ['dashboard', 'vendorPerformance'],
+  dashboardMonthlyReport: (months) => ['dashboard', 'monthlyReport', months],
+  companySettings: ['settings', 'company'],
+  systemSettings: ['settings', 'system'],
+  approvalMatrix: ['settings', 'approvalMatrix'],
+};

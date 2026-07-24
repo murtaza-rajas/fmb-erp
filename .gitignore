@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Environment
+.env
+.env.local
+*.env
+
+# Logs
+logs/
+*.log
+
+# Uploads (local dev fallback; production uses S3)
+backend/src/uploads/*
+!backend/src/uploads/.gitkeep
+
+# Test/coverage
+coverage/
+
+# Build output
+frontend/dist/
+frontend/build/
+
+# OS/editor
+.DS_Store
+.vscode/
+*.swp
+
+# Swagger generated
+backend/swagger-output.json

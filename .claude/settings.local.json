@@ -1,0 +1,51 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mongosh fmb_erp_dev --quiet --eval ' *)",
+      "Bash(pkill -f \"node src/server.js\")",
+      "Skill(run)",
+      "Skill(run:*)",
+      "Bash(sed -i \"s/\\\\.optional\\(\\)/.optional\\({ values: 'falsy' }\\)/g\" *.js *)",
+      "Bash(npx jest *)",
+      "Bash(node check4.js)",
+      "Bash(npx vite *)",
+      "Bash(node check5.js)",
+      "Bash(node check6.js)",
+      "Bash(curl -s -o /dev/null -w \"Backend: %{http_code}\\\\n\" http://localhost:5000/api/v1/health)",
+      "Bash(curl -s -o /dev/null -w \"Frontend: %{http_code}\\\\n\" http://localhost:5173)",
+      "Bash(node /tmp/claude-1000/-var-www-html-fmb-erp/dd3b7e2b-27a3-4d19-ae18-d227405fcb92/scratchpad/pw/check7.js)",
+      "Bash(curl -s -o /dev/null -w \"Backend: %{http_code}\\\\n\" http://localhost:5000/api/v1/auth/me)",
+      "Bash(node /tmp/claude-1000/-var-www-html-fmb-erp/dd3b7e2b-27a3-4d19-ae18-d227405fcb92/scratchpad/pw/check11.js)",
+      "Bash(curl -s -o /dev/null -w \"Backend health: %{http_code}\\\\n\" http://localhost:5000/api/v1/auth/me)",
+      "Bash(curl -s -X POST http://localhost:5000/api/v1/auth/login -H \"Content-Type: application/json\" -d '{\"email\":\"admin@fmb-erp.local\",\"password\":\"ChangeMe@123\"}' -w \"\\\\nHTTP %{http_code}\\\\n\")",
+      "Bash(curl -s -o /dev/null -w \"Backend: %{http_code}\\\\n\" http://localhost:5000/api/v1/auth/me --max-time 3)",
+      "Bash(redis-cli ping *)",
+      "Bash(systemctl is-active *)",
+      "Bash(curl -s -o /dev/null -w \"Frontend: %{http_code}\\\\n\" http://localhost:5173 --max-time 3)",
+      "Bash(nohup npm run dev)",
+      "Bash(disown)",
+      "Bash(curl -s -o /dev/null -w \"Backend health: %{http_code}\\\\n\" http://localhost:5000/api/v1/auth/me --max-time 5)",
+      "Bash(curl -s -X POST http://localhost:5000/api/v1/auth/login -H \"Content-Type: application/json\" -d '{\"email\":\"admin@fmb-erp.local\",\"password\":\"ChangeMe@123\"}' -w \"\\\\nHTTP %{http_code}\\\\n\" -o /dev/null -s -w \"HTTP %{http_code}\\\\n\")",
+      "Bash(ps -p 18429 -o pid,etime,cmd)",
+      "Read(//proc/18429/**)",
+      "Read(//dev/pts/**)",
+      "Bash(mongosh --quiet --eval \"db.runCommand\\({ping:1}\\)\")",
+      "Bash(curl -s -X POST http://localhost:5000/api/v1/auth/login -H \"Content-Type: application/json\" -d '{\"email\":\"admin@fmb-erp.local\",\"password\":\"ChangeMe@123\"}' -o /dev/null -s -w \"Login: HTTP %{http_code}\\\\n\")",
+      "Read(//home/vowelweb/.claude/**)",
+      "Bash(xargs -I{} sh -c 'echo \"== {} ==\"; head -15 \"{}\"')",
+      "Bash(mkdir -p /var/www/html/fmb-erp/.claude/graph /var/www/html/fmb-erp/.claude/commands /var/www/html/fmb-erp/.claude/agents)",
+      "Read(//tmp/**)",
+      "Bash(python3 -c ' *)",
+      "Bash(node -e \"require\\('./src/app.js'\\)\")",
+      "Bash(node /tmp/claude-1000/-var-www-html-fmb-erp/dd3b7e2b-27a3-4d19-ae18-d227405fcb92/scratchpad/pw/check_vendor_items.js)",
+      "Bash(sed -i \"s/xwj0gr4lr@mozmail.com/newuser-test-$\\(date +%s\\)@mozmail.com/\" /tmp/claude-1000/-var-www-html-fmb-erp/dd3b7e2b-27a3-4d19-ae18-d227405fcb92/scratchpad/pw/check_user_create.js)",
+      "Bash(node /tmp/claude-1000/-var-www-html-fmb-erp/dd3b7e2b-27a3-4d19-ae18-d227405fcb92/scratchpad/pw/check_user_create.js)",
+      "Bash(node /tmp/claude-1000/-var-www-html-fmb-erp/dd3b7e2b-27a3-4d19-ae18-d227405fcb92/scratchpad/pw/check_regression.js)",
+      "Bash(docker compose *)"
+    ],
+    "additionalDirectories": [
+      "/var/www/html/fmb-erp/backend/src/validators",
+      "/var/www/html/fmb-erp/.claude"
+    ]
+  }
+}
