@@ -1,8 +1,10 @@
 # Multi-stage build: compile the Vite app, then serve the static output
 # through the same nginx that reverse-proxies /api and /socket.io to the
 # backend — one public-facing container, not two.
+# See backend.Dockerfile for why npm is pinned before `npm ci` here.
 FROM node:20-alpine AS build
 WORKDIR /app
+RUN npm install -g npm@11
 COPY frontend/package*.json ./
 RUN npm ci
 COPY frontend/ .
