@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, IconButton, Tooltip } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
@@ -9,9 +10,10 @@ import { useSnackbar } from 'notistack';
 import PageHeader from '../../../../components/PageHeader';
 import DataTable from '../../../../components/DataTable';
 import ConfirmDialog from '../../../../components/ConfirmDialog';
+import ImportExcelDialog from '../../../../components/ImportExcelDialog';
 import { usePermission } from '../../../../hooks/usePermission';
 import { useTableState } from '../../../../hooks/useTableState';
-import { useVendorsQuery, useDeleteVendorMutation } from '../vendorsApi';
+import { useVendorsQuery, useDeleteVendorMutation, useImportVendorsMutation } from '../vendorsApi';
 import VendorFormDialog from './VendorFormDialog';
 
 export default function VendorsListPage() {
@@ -24,6 +26,7 @@ export default function VendorsListPage() {
 
   const [formTarget, setFormTarget] = useState(undefined);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [importOpen, setImportOpen] = useState(false);
   const { mutateAsync: deleteVendor, isPending: deleting } = useDeleteVendorMutation();
   const { enqueueSnackbar } = useSnackbar();
 
@@ -75,7 +78,18 @@ export default function VendorsListPage() {
       <PageHeader
         title="Vendors"
         subtitle="Vendor master"
-        actions={canCreate && <Button variant="contained" startIcon={<AddIcon />} onClick={() => setFormTarget(null)}>New Vendor</Button>}
+        actions={
+          canCreate && (
+            <>
+              <Button variant="outlined" startIcon={<UploadFileIcon />} onClick={() => setImportOpen(true)}>
+                Import from Excel
+              </Button>
+              <Button variant="contained" startIcon={<AddIcon />} onClick={() => setFormTarget(null)}>
+                New Vendor
+              </Button>
+            </>
+          )
+        }
       />
 
       <DataTable
@@ -92,6 +106,13 @@ export default function VendorsListPage() {
       />
 
       <VendorFormDialog open={formTarget !== undefined} onClose={() => setFormTarget(undefined)} vendor={formTarget} />
+      <ImportExcelDialog
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        title="Import Vendors from Excel"
+        useImportMutation={useImportVendorsMutation}
+        entityLabel="vendors"
+      />
       <ConfirmDialog
         open={Boolean(deleteTarget)}
         onClose={() => setDeleteTarget(null)}

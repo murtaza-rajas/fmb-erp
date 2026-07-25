@@ -57,6 +57,14 @@ export function useDeleteVendorMutation() {
   });
 }
 
+export function useImportVendorsMutation() {
+  const invalidate = useInvalidateVendors();
+  return useMutation({
+    mutationFn: (formData) => axiosClient.post('/masters/vendors/import', formData).then((r) => r.data.data),
+    onSuccess: invalidate,
+  });
+}
+
 // --- Bank accounts sub-resource ---
 
 export function useVendorBankAccountsQuery(vendorId) {

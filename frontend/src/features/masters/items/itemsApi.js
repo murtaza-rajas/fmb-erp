@@ -50,6 +50,14 @@ export function useDeleteItemMutation() {
   });
 }
 
+export function useImportItemsMutation() {
+  const invalidate = useInvalidateItems();
+  return useMutation({
+    mutationFn: (formData) => axiosClient.post('/masters/items/import', formData).then((r) => r.data.data),
+    onSuccess: invalidate,
+  });
+}
+
 export function useLowStockCheckQuery(itemId) {
   return useQuery({
     queryKey: ['items', itemId, 'lowStockCheck'],

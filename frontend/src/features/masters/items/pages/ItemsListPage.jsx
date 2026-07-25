@@ -1,15 +1,17 @@
 import { useMemo, useState } from 'react';
 import { Button, IconButton, Tooltip, Chip } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import { useSnackbar } from 'notistack';
 import PageHeader from '../../../../components/PageHeader';
 import DataTable from '../../../../components/DataTable';
 import ConfirmDialog from '../../../../components/ConfirmDialog';
+import ImportExcelDialog from '../../../../components/ImportExcelDialog';
 import { usePermission } from '../../../../hooks/usePermission';
 import { useTableState } from '../../../../hooks/useTableState';
-import { useItemsQuery, useDeleteItemMutation } from '../itemsApi';
+import { useItemsQuery, useDeleteItemMutation, useImportItemsMutation } from '../itemsApi';
 import ItemFormDialog from './ItemFormDialog';
 
 export default function ItemsListPage() {
@@ -21,6 +23,7 @@ export default function ItemsListPage() {
 
   const [formTarget, setFormTarget] = useState(undefined);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [importOpen, setImportOpen] = useState(false);
   const { mutateAsync: deleteItem, isPending: deleting } = useDeleteItemMutation();
   const { enqueueSnackbar } = useSnackbar();
 
@@ -70,7 +73,18 @@ export default function ItemsListPage() {
       <PageHeader
         title="Items"
         subtitle="Item master"
-        actions={canCreate && <Button variant="contained" startIcon={<AddIcon />} onClick={() => setFormTarget(null)}>New Item</Button>}
+        actions={
+          canCreate && (
+            <>
+              <Button variant="outlined" startIcon={<UploadFileIcon />} onClick={() => setImportOpen(true)}>
+                Import from Excel
+              </Button>
+              <Button variant="contained" startIcon={<AddIcon />} onClick={() => setFormTarget(null)}>
+                New Item
+              </Button>
+            </>
+          )
+        }
       />
 
       <DataTable
@@ -87,6 +101,13 @@ export default function ItemsListPage() {
       />
 
       <ItemFormDialog open={formTarget !== undefined} onClose={() => setFormTarget(undefined)} item={formTarget} />
+      <ImportExcelDialog
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        title="Import Items from Excel"
+        useImportMutation={useImportItemsMutation}
+        entityLabel="items"
+      />
       <ConfirmDialog
         open={Boolean(deleteTarget)}
         onClose={() => setDeleteTarget(null)}

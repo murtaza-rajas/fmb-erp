@@ -1,5 +1,6 @@
 const asyncHandler = require('../utils/asyncHandler');
 const ApiResponse = require('../utils/ApiResponse');
+const ApiError = require('../utils/ApiError');
 const itemService = require('../services/item.service');
 const stockLedgerService = require('../services/stockLedger.service');
 
@@ -35,4 +36,10 @@ const lowStockCheck = asyncHandler(async (req, res) => {
   ApiResponse.send(res, { data: { itemId: req.params.id, reorderLevel: item.reorderLevel, currentQuantity, isBelowReorderLevel: currentQuantity <= item.reorderLevel } });
 });
 
-module.exports = { create, list, getById, update, remove, lowStockCheck };
+const importItems = asyncHandler(async (req, res) => {
+  if (!req.file) throw ApiError.badRequest('Excel file is required (field name "file")');
+  const summary = await itemService.importItems(req.file.buffer, req.user._id);
+  ApiResponse.send(res, { data: summary });
+});
+
+module.exports = { create, list, getById, update, remove, lowStockCheck, importItems };

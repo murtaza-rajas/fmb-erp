@@ -1,8 +1,11 @@
 const vendorRepository = require('../repositories/vendor.repository');
 const vendorBankAccountRepository = require('../repositories/vendorBankAccount.repository');
 const vendorItemRateRepository = require('../repositories/vendorItemRate.repository');
+const Vendor = require('../models/Vendor.model');
 const ApiError = require('../utils/ApiError');
 const auditLogService = require('./auditLog.service');
+const { mongoose } = require('../config/db');
+const { parseVendorWorkbook } = require('../utils/excelImport/parseVendorWorkbook');
 
 async function createVendor(payload, actorId) {
   const vendor = await vendorRepository.create({ ...payload, createdBy: actorId, updatedBy: actorId });
@@ -92,6 +95,50 @@ function listItemRates(vendorId, itemId) {
   return vendorItemRateRepository.findForVendor(vendorId, { itemId });
 }
 
+// --- Bulk import from Excel ---
+
+// Upserts by vendor name (Vendor.name has no unique index in the schema, but
+// this is the only stable natural key the source export has). Re-importing
+// the same file is safe: matching rows are updated, not duplicated.
+async function importVendors(fileBuffer, actorId) {
+  const { rows, errors } = await parseVendorWorkbook(fileBuffer);
+  if (errors.length > 0) throw ApiError.validation(errors, 'Could not parse the uploaded vendor file');
+  if (rows.length === 0) throw ApiError.badRequest('No vendor rows found in the uploaded file');
+
+  const session = await mongoose.startSession();
+  let summary;
+  try {
+    await session.withTransaction(async () => {
+      const existingNames = new Set(
+        (await Vendor.find({ name: { $in: rows.map((r) => r.name) } }).session(session)).map((v) => v.name)
+      );
+
+      const ops = rows.map((row) => ({
+        updateOne: {
+          filter: { name: row.name },
+          update: {
+            $set: { ...row, updatedBy: actorId },
+            $setOnInsert: { createdBy: actorId },
+          },
+          upsert: true,
+        },
+      }));
+      await Vendor.bulkWrite(ops, { session });
+
+      summary = {
+        totalRows: rows.length,
+        created: rows.filter((r) => !existingNames.has(r.name)).length,
+        updated: rows.filter((r) => existingNames.has(r.name)).length,
+      };
+    });
+  } finally {
+    await session.endSession();
+  }
+
+  await auditLogService.record({ userId: actorId, action: 'import', module: 'vendor', entityType: 'Vendor', entityId: null, after: summary });
+  return summary;
+}
+
 module.exports = {
   createVendor,
   listVendors,
@@ -103,4 +150,5 @@ module.exports = {
   removeBankAccount,
   addItemRate,
   listItemRates,
+  importVendors,
 };

@@ -41,11 +41,13 @@
       "Bash(sed -i \"s/xwj0gr4lr@mozmail.com/newuser-test-$\\(date +%s\\)@mozmail.com/\" /tmp/claude-1000/-var-www-html-fmb-erp/dd3b7e2b-27a3-4d19-ae18-d227405fcb92/scratchpad/pw/check_user_create.js)",
       "Bash(node /tmp/claude-1000/-var-www-html-fmb-erp/dd3b7e2b-27a3-4d19-ae18-d227405fcb92/scratchpad/pw/check_user_create.js)",
       "Bash(node /tmp/claude-1000/-var-www-html-fmb-erp/dd3b7e2b-27a3-4d19-ae18-d227405fcb92/scratchpad/pw/check_regression.js)",
-      "Bash(docker compose *)"
+      "Bash(docker compose *)",
+      "Bash(rm -rf /tmp/claude-1000/-var-www-html-fmb-erp/2863ddc8-5e70-427e-b625-66fe86513204/scratchpad/node_modules /tmp/claude-1000/-var-www-html-fmb-erp/2863ddc8-5e70-427e-b625-66fe86513204/scratchpad/package*.json 2>/dev/null; echo done)"
     ],
     "additionalDirectories": [
       "/var/www/html/fmb-erp/backend/src/validators",
-      "/var/www/html/fmb-erp/.claude"
+      "/var/www/html/fmb-erp/.claude",
+      "/tmp/claude-1000/-var-www-html-fmb-erp/2863ddc8-5e70-427e-b625-66fe86513204/scratchpad/node_modules"
     ]
   }
 }

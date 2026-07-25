@@ -4,12 +4,14 @@ const vendorValidator = require('../../validators/vendor.validator');
 const validate = require('../../middlewares/validate.middleware');
 const authorize = require('../../middlewares/authorize.middleware');
 const queryParser = require('../../middlewares/queryParser.middleware');
+const uploadExcel = require('../../middlewares/uploadExcel.middleware');
 const { PERMISSIONS } = require('../../constants/permissions');
 
 const router = Router();
 
 router.get('/', authorize(PERMISSIONS.MASTER_READ), queryParser, vendorController.list);
 router.post('/', authorize(PERMISSIONS.MASTER_CREATE), vendorValidator.create, validate, vendorController.create);
+router.post('/import', authorize(PERMISSIONS.MASTER_CREATE), uploadExcel.single('file'), vendorController.importVendors);
 router.get('/:id', authorize(PERMISSIONS.MASTER_READ), vendorController.getById);
 router.patch('/:id', authorize(PERMISSIONS.MASTER_UPDATE), vendorValidator.update, validate, vendorController.update);
 router.delete('/:id', authorize(PERMISSIONS.MASTER_DELETE), vendorController.remove);

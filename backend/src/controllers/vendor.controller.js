@@ -1,5 +1,6 @@
 const asyncHandler = require('../utils/asyncHandler');
 const ApiResponse = require('../utils/ApiResponse');
+const ApiError = require('../utils/ApiError');
 const vendorService = require('../services/vendor.service');
 
 const create = asyncHandler(async (req, res) => {
@@ -53,6 +54,12 @@ const listItemRates = asyncHandler(async (req, res) => {
   ApiResponse.send(res, { data: rates });
 });
 
+const importVendors = asyncHandler(async (req, res) => {
+  if (!req.file) throw ApiError.badRequest('Excel file is required (field name "file")');
+  const summary = await vendorService.importVendors(req.file.buffer, req.user._id);
+  ApiResponse.send(res, { data: summary });
+});
+
 module.exports = {
   create,
   list,
@@ -64,4 +71,5 @@ module.exports = {
   removeBankAccount,
   addItemRate,
   listItemRates,
+  importVendors,
 };

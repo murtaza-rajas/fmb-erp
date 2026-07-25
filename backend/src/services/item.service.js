@@ -1,7 +1,12 @@
 const itemRepository = require('../repositories/item.repository');
+const Item = require('../models/Item.model');
+const Category = require('../models/Category.model');
+const Unit = require('../models/Unit.model');
 const ApiError = require('../utils/ApiError');
 const auditLogService = require('./auditLog.service');
 const { generateCode } = require('../helpers/codeGenerator');
+const { mongoose } = require('../config/db');
+const { parseItemWorkbook } = require('../utils/excelImport/parseItemWorkbook');
 
 async function resolveSku(requestedSku) {
   if (requestedSku) {
@@ -63,4 +68,86 @@ async function deleteItem(id, actorId) {
   return item;
 }
 
-module.exports = { createItem, listItems, getItemById, updateItem, deleteItem };
+// --- Bulk import from Excel ---
+
+// Upserts by item name (the source stock register has no SKU column, so name
+// is the only stable natural key to re-match on repeat imports). Category is
+// auto-classified by keyword (see excelImport/classifyItemCategory.js) and
+// unit is matched/auto-created by Pack symbol — both are simple lookup
+// masters, safe to create on the fly, unlike the auto-classified category
+// which is a best-effort guess surfaced back in the response for review.
+async function importItems(fileBuffer, actorId) {
+  const { rows, errors } = await parseItemWorkbook(fileBuffer);
+  if (errors.length > 0) throw ApiError.validation(errors, 'Could not parse the uploaded item file');
+  if (rows.length === 0) throw ApiError.badRequest('No item rows found in the uploaded file');
+
+  const session = await mongoose.startSession();
+  let summary;
+  try {
+    await session.withTransaction(async () => {
+      const categoryNames = [...new Set(rows.map((r) => r.category))];
+      const categoryDocs = await Promise.all(
+        categoryNames.map((name) =>
+          Category.findOneAndUpdate(
+            { name },
+            { $setOnInsert: { name, createdBy: actorId, updatedBy: actorId } },
+            { upsert: true, new: true, setDefaultsOnInsert: true, session }
+          )
+        )
+      );
+      const categoryIdByName = new Map(categoryDocs.map((c) => [c.name, c._id]));
+
+      const unitSymbols = [...new Set(rows.map((r) => r.unitSymbol))];
+      const unitDocs = await Promise.all(
+        unitSymbols.map((symbol) =>
+          Unit.findOneAndUpdate(
+            { symbol },
+            { $setOnInsert: { name: symbol, symbol, createdBy: actorId, updatedBy: actorId } },
+            { upsert: true, new: true, setDefaultsOnInsert: true, session }
+          )
+        )
+      );
+      const unitIdBySymbol = new Map(unitDocs.map((u) => [u.symbol, u._id]));
+
+      const existingNames = new Set(
+        (await Item.find({ name: { $in: rows.map((r) => r.name) } }).session(session)).map((i) => i.name)
+      );
+
+      const ops = rows.map((row) => {
+        const isNew = !existingNames.has(row.name);
+        return {
+          updateOne: {
+            filter: { name: row.name },
+            update: {
+              $set: {
+                name: row.name,
+                categoryId: categoryIdByName.get(row.category),
+                unitId: unitIdBySymbol.get(row.unitSymbol),
+                reorderLevel: row.reorderLevel,
+                standardRate: row.standardRate,
+                updatedBy: actorId,
+              },
+              ...(isNew ? { $setOnInsert: { sku: generateCode('ITM'), createdBy: actorId } } : {}),
+            },
+            upsert: true,
+          },
+        };
+      });
+      await Item.bulkWrite(ops, { session });
+
+      summary = {
+        totalRows: rows.length,
+        created: rows.filter((r) => !existingNames.has(r.name)).length,
+        updated: rows.filter((r) => existingNames.has(r.name)).length,
+        categorization: rows.map((r) => ({ name: r.name, category: r.category, unitSymbol: r.unitSymbol })),
+      };
+    });
+  } finally {
+    await session.endSession();
+  }
+
+  await auditLogService.record({ userId: actorId, action: 'import', module: 'item', entityType: 'Item', entityId: null, after: { totalRows: summary.totalRows, created: summary.created, updated: summary.updated } });
+  return summary;
+}
+
+module.exports = { createItem, listItems, getItemById, updateItem, deleteItem, importItems };
