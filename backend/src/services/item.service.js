@@ -2,11 +2,13 @@ const itemRepository = require('../repositories/item.repository');
 const Item = require('../models/Item.model');
 const Category = require('../models/Category.model');
 const Unit = require('../models/Unit.model');
+const PurchaseOrder = require('../models/PurchaseOrder.model');
 const ApiError = require('../utils/ApiError');
 const auditLogService = require('./auditLog.service');
 const { generateCode } = require('../helpers/codeGenerator');
 const { mongoose } = require('../config/db');
 const { parseItemWorkbook } = require('../utils/excelImport/parseItemWorkbook');
+const { PO_STATUS } = require('../constants/enums');
 
 async function resolveSku(requestedSku) {
   if (requestedSku) {
@@ -61,7 +63,21 @@ async function updateItem(id, payload, actorId) {
   return updated;
 }
 
+// Deleting an item that's still awaiting receipt on a PO leaves that PO's
+// GRN form unable to resolve the line item (populate silently returns null),
+// which blocks GRN recording with no visible error — block the delete while
+// the item could still be received against (mirrors grn.service.js's own
+// RECEIVABLE_PO_STATUSES gate on the same two statuses).
 async function deleteItem(id, actorId) {
+  const openPo = await PurchaseOrder.findOne({
+    'items.itemId': id,
+    isDeleted: false,
+    status: { $in: [PO_STATUS.ISSUED, PO_STATUS.PARTIALLY_RECEIVED] },
+  });
+  if (openPo) {
+    throw ApiError.conflict(`Cannot delete item — it is still awaiting receipt on Purchase Order ${openPo.poNumber}`);
+  }
+
   const item = await itemRepository.softDeleteById(id, actorId);
   if (!item) throw ApiError.notFound('Item not found');
   await auditLogService.record({ userId: actorId, action: 'delete', module: 'item', entityType: 'Item', entityId: id });

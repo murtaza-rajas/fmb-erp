@@ -4,7 +4,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button, Stack, Alert,
-  CircularProgress, Grid, Typography,
+  CircularProgress, Grid, Typography, InputAdornment,
 } from '@mui/material';
 import { useSnackbar } from 'notistack';
 import FormSelect from '../../../../components/form/FormSelect';
@@ -100,27 +100,34 @@ export default function GrnFormDialog({ open, onClose }) {
               {fields.length > 0 && (
                 <>
                   <Typography variant="subtitle2">Items (ordered quantity shown per line)</Typography>
-                  {fields.map((field, index) => (
-                    <Grid container spacing={1.5} key={field.id} alignItems="center">
-                      <Grid item xs={12} sm={2.5}>
-                        <Typography variant="body2">
-                          {selectedPo?.items[index]?.itemId?.name} <Typography component="span" variant="caption" color="text.secondary">(ord. {selectedPo?.items[index]?.quantity})</Typography>
-                        </Typography>
+                  {fields.map((field, index) => {
+                    const unitSymbol = selectedPo?.items[index]?.itemId?.unitId?.symbol;
+                    const unitAdornment = unitSymbol ? { endAdornment: <InputAdornment position="end">{unitSymbol}</InputAdornment> } : undefined;
+                    return (
+                      <Grid container spacing={1.5} key={field.id} alignItems="center">
+                        <Grid item xs={12} sm={2.5}>
+                          <Typography variant="body2">
+                            {selectedPo?.items[index]?.itemId?.name}{' '}
+                            <Typography component="span" variant="caption" color="text.secondary">
+                              (ord. {selectedPo?.items[index]?.quantity}{unitSymbol ? ` ${unitSymbol}` : ''})
+                            </Typography>
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={6} sm={2}>
+                          <FormTextField name={`items.${index}.receivedQty`} label="Received Qty" type="number" InputProps={unitAdornment} />
+                        </Grid>
+                        <Grid item xs={6} sm={2}>
+                          <FormTextField name={`items.${index}.rejectedQty`} label="Rejected Qty" type="number" InputProps={unitAdornment} />
+                        </Grid>
+                        <Grid item xs={6} sm={2.5}>
+                          <FormSelect name={`items.${index}.rejectionReason`} label="Rejection Reason" options={REJECTION_REASON_OPTIONS} />
+                        </Grid>
+                        <Grid item xs={6} sm={3}>
+                          <FormTextField name={`items.${index}.remarks`} label="Remarks" />
+                        </Grid>
                       </Grid>
-                      <Grid item xs={6} sm={2}>
-                        <FormTextField name={`items.${index}.receivedQty`} label="Received Qty" type="number" />
-                      </Grid>
-                      <Grid item xs={6} sm={2}>
-                        <FormTextField name={`items.${index}.rejectedQty`} label="Rejected Qty" type="number" />
-                      </Grid>
-                      <Grid item xs={6} sm={2.5}>
-                        <FormSelect name={`items.${index}.rejectionReason`} label="Rejection Reason" options={REJECTION_REASON_OPTIONS} />
-                      </Grid>
-                      <Grid item xs={6} sm={3}>
-                        <FormTextField name={`items.${index}.remarks`} label="Remarks" />
-                      </Grid>
-                    </Grid>
-                  ))}
+                    );
+                  })}
                 </>
               )}
             </Stack>

@@ -38,6 +38,9 @@ const PERMISSIONS = Object.freeze({
   STOCK_TRANSFER: 'stock:transfer',
   STOCK_RETURN: 'stock:return',
 
+  MATERIAL_ISSUE_CREATE: 'material_issue:create',
+  MATERIAL_ISSUE_READ: 'material_issue:read',
+
   DEBIT_NOTE_CREATE: 'debit_note:create',
   DEBIT_NOTE_READ: 'debit_note:read',
   DEBIT_NOTE_UPDATE: 'debit_note:update',

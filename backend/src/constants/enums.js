@@ -99,6 +99,12 @@ const REJECTION_REASON = Object.freeze({
   OTHER: 'other',
 });
 
+const MATERIAL_ISSUE_CATEGORY = Object.freeze({
+  FMB: 'fmb',
+  SAFAR_THAALI: 'safar_thaali',
+  EVENT: 'event',
+});
+
 module.exports = {
   PO_STATUS,
   PRN_STATUS,
@@ -115,4 +121,5 @@ module.exports = {
   STOCK_TRANSFER_STATUS,
   NOTE_STATUS,
   REJECTION_REASON,
+  MATERIAL_ISSUE_CATEGORY,
 };

@@ -10,5 +10,6 @@ router.use(authenticate);
 router.get('/summary', authorize(PERMISSIONS.REPORT_READ), dashboardController.summary);
 router.get('/vendor-performance', authorize(PERMISSIONS.REPORT_READ), dashboardController.vendorPerformance);
 router.get('/monthly-report', authorize(PERMISSIONS.REPORT_READ), dashboardController.monthlyReport);
+router.get('/po-status-breakdown', authorize(PERMISSIONS.REPORT_READ), dashboardController.poStatusBreakdown);
 
 module.exports = router;

@@ -94,7 +94,9 @@ function listPurchaseOrders({ page, limit, sort, search, filter }) {
 }
 
 async function getPurchaseOrderById(id) {
-  const po = await purchaseOrderRepository.findById(id, { populate: 'vendorId prnId items.itemId items.taxId' });
+  const po = await purchaseOrderRepository.findById(id, {
+    populate: ['vendorId', 'prnId', { path: 'items.itemId', populate: 'unitId' }, 'items.taxId'],
+  });
   if (!po) throw ApiError.notFound('Purchase Order not found');
   return po;
 }

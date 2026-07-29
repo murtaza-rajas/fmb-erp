@@ -35,7 +35,9 @@ function listRequisitions({ page, limit, sort, search, filter }) {
 }
 
 async function getRequisitionById(id) {
-  const prn = await prnRepository.findById(id, { populate: 'storeId requestedBy items.itemId' });
+  const prn = await prnRepository.findById(id, {
+    populate: ['storeId', 'requestedBy', { path: 'items.itemId', populate: 'unitId' }],
+  });
   if (!prn) throw ApiError.notFound('Purchase Requisition not found');
   return prn;
 }

@@ -4,7 +4,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button, Stack, Alert,
-  CircularProgress, Grid, Typography,
+  CircularProgress, Grid, Typography, InputAdornment,
 } from '@mui/material';
 import { useSnackbar } from 'notistack';
 import { useNavigate } from 'react-router-dom';
@@ -94,19 +94,32 @@ export default function PurchaseOrderFormDialog({ open, onClose }) {
                   <Typography variant="subtitle2">
                     Items <Typography component="span" variant="caption" color="text.secondary">(rate defaults to vendor quote or item standard rate if left blank)</Typography>
                   </Typography>
-                  {fields.map((field, index) => (
-                    <Grid container spacing={1.5} key={field.id} alignItems="center">
-                      <Grid item xs={6}>
-                        <Typography variant="body2">{selectedPrn?.items[index]?.itemId?.name}</Typography>
+                  {fields.map((field, index) => {
+                    const unitSymbol = selectedPrn?.items[index]?.itemId?.unitId?.symbol;
+                    return (
+                      <Grid container spacing={1.5} key={field.id} alignItems="center">
+                        <Grid item xs={6}>
+                          <Typography variant="body2">
+                            {selectedPrn?.items[index]?.itemId?.name}
+                            {unitSymbol && (
+                              <Typography component="span" variant="caption" color="text.secondary"> ({unitSymbol})</Typography>
+                            )}
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={3}>
+                          <FormTextField
+                            name={`items.${index}.quantity`}
+                            label="Quantity"
+                            type="number"
+                            InputProps={unitSymbol ? { endAdornment: <InputAdornment position="end">{unitSymbol}</InputAdornment> } : undefined}
+                          />
+                        </Grid>
+                        <Grid item xs={3}>
+                          <FormTextField name={`items.${index}.rate`} label="Rate (optional)" type="number" />
+                        </Grid>
                       </Grid>
-                      <Grid item xs={3}>
-                        <FormTextField name={`items.${index}.quantity`} label="Quantity" type="number" />
-                      </Grid>
-                      <Grid item xs={3}>
-                        <FormTextField name={`items.${index}.rate`} label="Rate (optional)" type="number" />
-                      </Grid>
-                    </Grid>
-                  ))}
+                    );
+                  })}
                 </>
               )}
             </Stack>

@@ -5,7 +5,7 @@ const ApiError = require('../utils/ApiError');
 const { aws } = require('../config/env');
 
 const ALLOWED_CONTENT_TYPES = ['image/jpeg', 'image/png', 'application/pdf'];
-const ALLOWED_MODULES = ['invoice', 'grn', 'debit_note'];
+const ALLOWED_MODULES = ['invoice', 'grn', 'debit_note', 'vendor'];
 
 function assertStorageConfigured() {
   if (!aws.accessKeyId || !aws.secretAccessKey || !aws.s3Bucket) {

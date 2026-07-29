@@ -1,9 +1,9 @@
-import { useForm, FormProvider, useFieldArray } from 'react-hook-form';
+import { useForm, FormProvider, useFieldArray, useFormContext, useWatch } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button, Stack, Alert,
-  CircularProgress, Grid, IconButton, Typography,
+  CircularProgress, Grid, IconButton, Typography, InputAdornment,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
@@ -30,6 +30,39 @@ const schema = yup.object({
   ).min(1, 'At least one item is required'),
 });
 
+function RequisitionItemRow({ index, itemOptions, unitByItemId, onRemove, disableRemove }) {
+  const { control } = useFormContext();
+  const itemId = useWatch({ control, name: `items.${index}.itemId` });
+  const unitSymbol = unitByItemId[itemId];
+
+  return (
+    <Grid container spacing={1.5} alignItems="flex-start">
+      <Grid item xs={12} sm={4}>
+        <FormAutocomplete name={`items.${index}.itemId`} label="Item" options={itemOptions} />
+      </Grid>
+      <Grid item xs={6} sm={2}>
+        <FormTextField
+          name={`items.${index}.quantity`}
+          label="Quantity"
+          type="number"
+          InputProps={unitSymbol ? { endAdornment: <InputAdornment position="end">{unitSymbol}</InputAdornment> } : undefined}
+        />
+      </Grid>
+      <Grid item xs={6} sm={3}>
+        <FormDatePicker name={`items.${index}.neededByDate`} label="Needed By" />
+      </Grid>
+      <Grid item xs={10} sm={2.5}>
+        <FormTextField name={`items.${index}.reason`} label="Reason" />
+      </Grid>
+      <Grid item xs={2} sm={0.5}>
+        <IconButton onClick={onRemove} disabled={disableRemove}>
+          <DeleteOutlineIcon fontSize="small" />
+        </IconButton>
+      </Grid>
+    </Grid>
+  );
+}
+
 export default function RequisitionFormDialog({ open, onClose }) {
   const { data: storesData } = useStoresQuery({ limit: 100 });
   const { data: items = [] } = useAllItemsQuery();
@@ -55,7 +88,8 @@ export default function RequisitionFormDialog({ open, onClose }) {
   };
 
   const storeOptions = (storesData?.items || []).map((s) => ({ value: s._id, label: s.name }));
-  const itemOptions = items.map((i) => ({ value: i._id, label: `${i.name} (${i.sku})` }));
+  const itemOptions = items.map((i) => ({ value: i._id, label: `${i.name} (${i.sku}) — ${i.unitId?.symbol || 'no unit'}` }));
+  const unitByItemId = Object.fromEntries(items.map((i) => [i._id, i.unitId?.symbol]));
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
@@ -76,25 +110,14 @@ export default function RequisitionFormDialog({ open, onClose }) {
 
               <Typography variant="subtitle2">Items</Typography>
               {fields.map((field, index) => (
-                <Grid container spacing={1.5} key={field.id} alignItems="flex-start">
-                  <Grid item xs={12} sm={4}>
-                    <FormAutocomplete name={`items.${index}.itemId`} label="Item" options={itemOptions} />
-                  </Grid>
-                  <Grid item xs={6} sm={2}>
-                    <FormTextField name={`items.${index}.quantity`} label="Quantity" type="number" />
-                  </Grid>
-                  <Grid item xs={6} sm={3}>
-                    <FormDatePicker name={`items.${index}.neededByDate`} label="Needed By" />
-                  </Grid>
-                  <Grid item xs={10} sm={2.5}>
-                    <FormTextField name={`items.${index}.reason`} label="Reason" />
-                  </Grid>
-                  <Grid item xs={2} sm={0.5}>
-                    <IconButton onClick={() => remove(index)} disabled={fields.length === 1}>
-                      <DeleteOutlineIcon fontSize="small" />
-                    </IconButton>
-                  </Grid>
-                </Grid>
+                <RequisitionItemRow
+                  key={field.id}
+                  index={index}
+                  itemOptions={itemOptions}
+                  unitByItemId={unitByItemId}
+                  onRemove={() => remove(index)}
+                  disableRemove={fields.length === 1}
+                />
               ))}
               <Button
                 startIcon={<AddIcon />}

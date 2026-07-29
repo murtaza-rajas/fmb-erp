@@ -8,11 +8,19 @@ const create = [
   body('paymentTermsId').optional({ values: 'falsy' }).isMongoId(),
   body('itemsSupplied').optional({ values: 'falsy' }).isArray(),
   body('itemsSupplied.*').optional({ values: 'falsy' }).isMongoId(),
+  body('gstNumber').optional({ values: 'falsy' }).isString(),
+  body('fssaiNumber').optional({ values: 'falsy' }).isString(),
+  body('gstCertificateFileKey').optional({ values: 'falsy' }).isString(),
+  body('fssaiCertificateFileKey').optional({ values: 'falsy' }).isString(),
 ];
 
 const update = [
   body('name').optional({ values: 'falsy' }).notEmpty(),
   body('paymentTermsId').optional({ values: 'falsy' }).isMongoId(),
+  body('gstNumber').optional({ values: 'falsy' }).isString(),
+  body('fssaiNumber').optional({ values: 'falsy' }).isString(),
+  body('gstCertificateFileKey').optional({ values: 'falsy' }).isString(),
+  body('fssaiCertificateFileKey').optional({ values: 'falsy' }).isString(),
 ];
 
 const addBankAccount = [

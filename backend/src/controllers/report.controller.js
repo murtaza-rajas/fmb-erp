@@ -67,6 +67,16 @@ const ACTIVITY_COLUMNS = [
   { key: 'entityId', header: 'Entity Id' },
 ];
 
+const THAALI_COST_COLUMNS = [
+  { key: 'period', header: 'Period' },
+  { key: 'category', header: 'Category' },
+  { key: 'thaaliCount', header: 'Thaali Count' },
+  { key: 'totalCost', header: 'Total Cost' },
+  { key: 'costPerThaali', header: 'Cost / Thaali' },
+  { key: 'budget', header: 'Budget' },
+  { key: 'variance', header: 'Variance (Budget - Cost)' },
+];
+
 // Every report follows the same shape: fetch rows, then either stream an
 // export (csv/excel/pdf) or return JSON. Export requires report:export,
 // enforced by requireExportPermission below rather than duplicated per route.
@@ -134,4 +144,11 @@ const userActivity = buildReportHandler({
   title: 'User Activity Report',
 });
 
-module.exports = { purchases, vendors, inventory, stockLedger, payments, audit, userActivity };
+const thaaliCost = buildReportHandler({
+  getRows: (q) => reportService.getThaaliCostReport(q),
+  columns: THAALI_COST_COLUMNS,
+  filename: 'thaali-cost-report',
+  title: 'Thaali Cost Report',
+});
+
+module.exports = { purchases, vendors, inventory, stockLedger, payments, audit, userActivity, thaaliCost };

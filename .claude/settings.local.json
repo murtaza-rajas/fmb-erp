@@ -42,7 +42,11 @@
       "Bash(node /tmp/claude-1000/-var-www-html-fmb-erp/dd3b7e2b-27a3-4d19-ae18-d227405fcb92/scratchpad/pw/check_user_create.js)",
       "Bash(node /tmp/claude-1000/-var-www-html-fmb-erp/dd3b7e2b-27a3-4d19-ae18-d227405fcb92/scratchpad/pw/check_regression.js)",
       "Bash(docker compose *)",
-      "Bash(rm -rf /tmp/claude-1000/-var-www-html-fmb-erp/2863ddc8-5e70-427e-b625-66fe86513204/scratchpad/node_modules /tmp/claude-1000/-var-www-html-fmb-erp/2863ddc8-5e70-427e-b625-66fe86513204/scratchpad/package*.json 2>/dev/null; echo done)"
+      "Bash(rm -rf /tmp/claude-1000/-var-www-html-fmb-erp/2863ddc8-5e70-427e-b625-66fe86513204/scratchpad/node_modules /tmp/claude-1000/-var-www-html-fmb-erp/2863ddc8-5e70-427e-b625-66fe86513204/scratchpad/package*.json 2>/dev/null; echo done)",
+      "Bash(curl -s http://localhost:5000/api/v1/procurement/purchase-orders?limit=5 -H 'Authorization: Bearer __CMDSUB_OUTPUT__')",
+      "Bash(mongosh --quiet fmb_erp_dev --eval ' *)",
+      "Bash(mongosh \"mongodb://localhost:27017/fmb_erp_dev\" --quiet --file /tmp/claude-1000/-var-www-html-fmb-erp/e4e0dea6-c35a-47af-b3d8-eeb179b807ca/scratchpad/dry_run.mongosh.js)",
+      "Bash(mongosh mongodb://localhost:27017/fmb_erp_dev --quiet --eval ' *)"
     ],
     "additionalDirectories": [
       "/var/www/html/fmb-erp/backend/src/validators",

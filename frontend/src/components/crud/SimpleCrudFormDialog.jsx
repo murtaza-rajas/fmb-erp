@@ -44,9 +44,10 @@ export default function SimpleCrudFormDialog({ open, onClose, onSubmit, resource
                     key={f.name}
                     name={f.name}
                     label={f.label}
-                    type={f.type === 'number' ? 'number' : f.type === 'text' ? 'text' : undefined}
+                    type={f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : f.type === 'text' ? 'text' : undefined}
                     options={f.options}
                     autoFocus={f.autoFocus}
+                    InputLabelProps={f.type === 'date' ? { shrink: true } : undefined}
                   />
                 );
               })}

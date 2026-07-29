@@ -28,6 +28,7 @@ export const usePaymentReportQuery = (params) => useReport('payments', '/reports
 export const useAuditReportQuery = (params) => useReport('audit', '/reports/audit', params);
 export const useUserActivityReportQuery = (params) =>
   useReport('user-activity', '/reports/user-activity', params, { enabled: Boolean(params?.userId) });
+export const useThaaliCostReportQuery = (params) => useReport('thaali-cost', '/reports/thaali-cost', params);
 
 export async function downloadReportExport(endpoint, format, params, filename) {
   const response = await axiosClient.get(endpoint, {

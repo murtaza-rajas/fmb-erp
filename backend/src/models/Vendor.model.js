@@ -8,6 +8,10 @@ const vendorSchema = new Schema({
   email: { type: String, trim: true, lowercase: true },
   paymentTermsId: { type: Schema.Types.ObjectId, ref: 'PaymentTerm' },
   itemsSupplied: [{ type: Schema.Types.ObjectId, ref: 'Item' }],
+  gstNumber: { type: String, trim: true },
+  fssaiNumber: { type: String, trim: true },
+  gstCertificateFileKey: { type: String },
+  fssaiCertificateFileKey: { type: String },
 });
 
 vendorSchema.index({ name: 'text' });

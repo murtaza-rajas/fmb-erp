@@ -132,3 +132,30 @@ describe('Inventory: GRN over-receipt guard (regression test)', () => {
     expect(res.status).toBe(409);
   });
 });
+
+describe('Item deletion guard (regression test)', () => {
+  test('blocks deleting an item still referenced on an open (non-closed/cancelled) PO', async () => {
+    await createIssuedPo(10);
+
+    const res = await request(app).delete(`/api/v1/masters/items/${itemId}`).set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(409);
+  });
+
+  test('allows deleting an item once its only PO is fully received and closed', async () => {
+    const { poId } = await createIssuedPo(10);
+    await request(app)
+      .post('/api/v1/inventory/grns')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ poId, storeId, items: [{ itemId, receivedQty: 10, rejectedQty: 0 }] });
+
+    const res = await request(app).delete(`/api/v1/masters/items/${itemId}`).set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+  });
+
+  test('allows deleting an item with no PO references at all', async () => {
+    const res = await request(app).delete(`/api/v1/masters/items/${itemId}`).set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(200);
+  });
+});

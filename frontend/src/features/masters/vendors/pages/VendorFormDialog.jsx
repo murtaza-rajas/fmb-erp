@@ -7,17 +7,22 @@ import { useSnackbar } from 'notistack';
 import FormTextField from '../../../../components/form/FormTextField';
 import FormSelect from '../../../../components/form/FormSelect';
 import FormAutocomplete from '../../../../components/form/FormAutocomplete';
+import FormFileUpload from '../../../../components/form/FormFileUpload';
 import { usePaymentTermsQuery } from '../../paymentTerms/paymentTermsApi';
 import { useAllItemsQuery } from '../../items/itemsApi';
 import { useCreateVendorMutation, useUpdateVendorMutation } from '../vendorsApi';
 
 const schema = yup.object({
-  name: yup.string().required('Name is required'),
+  name: yup.string().required('Company Name is required'),
   contactPerson: yup.string().nullable(),
   phone: yup.string().nullable(),
   email: yup.string().email('Enter a valid email').nullable(),
   paymentTermsId: yup.string().nullable(),
   itemsSupplied: yup.array().of(yup.string()),
+  gstNumber: yup.string().nullable(),
+  fssaiNumber: yup.string().nullable(),
+  gstCertificateFileKey: yup.string().nullable(),
+  fssaiCertificateFileKey: yup.string().nullable(),
 });
 
 export default function VendorFormDialog({ open, onClose, vendor }) {
@@ -27,7 +32,18 @@ export default function VendorFormDialog({ open, onClose, vendor }) {
 
   const methods = useForm({
     resolver: yupResolver(schema),
-    defaultValues: { name: '', contactPerson: '', phone: '', email: '', paymentTermsId: '', itemsSupplied: [] },
+    defaultValues: {
+      name: '',
+      contactPerson: '',
+      phone: '',
+      email: '',
+      paymentTermsId: '',
+      itemsSupplied: [],
+      gstNumber: '',
+      fssaiNumber: '',
+      gstCertificateFileKey: '',
+      fssaiCertificateFileKey: '',
+    },
   });
 
   useEffect(() => {
@@ -41,8 +57,23 @@ export default function VendorFormDialog({ open, onClose, vendor }) {
               email: vendor.email || '',
               paymentTermsId: vendor.paymentTermsId?._id || vendor.paymentTermsId || '',
               itemsSupplied: (vendor.itemsSupplied || []).map((i) => i._id || i),
+              gstNumber: vendor.gstNumber || '',
+              fssaiNumber: vendor.fssaiNumber || '',
+              gstCertificateFileKey: vendor.gstCertificateFileKey || '',
+              fssaiCertificateFileKey: vendor.fssaiCertificateFileKey || '',
             }
-          : { name: '', contactPerson: '', phone: '', email: '', paymentTermsId: '', itemsSupplied: [] }
+          : {
+              name: '',
+              contactPerson: '',
+              phone: '',
+              email: '',
+              paymentTermsId: '',
+              itemsSupplied: [],
+              gstNumber: '',
+              fssaiNumber: '',
+              gstCertificateFileKey: '',
+              fssaiCertificateFileKey: '',
+            }
       );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -84,10 +115,14 @@ export default function VendorFormDialog({ open, onClose, vendor }) {
                   <Alert severity="error">{error.response?.data?.error?.message || 'Failed to save vendor'}</Alert>
                 </Grid>
               )}
-              <Grid item xs={12} sm={6}><FormTextField name="name" label="Vendor Name" autoFocus /></Grid>
+              <Grid item xs={12} sm={6}><FormTextField name="name" label="Company Name" autoFocus /></Grid>
               <Grid item xs={12} sm={6}><FormTextField name="contactPerson" label="Contact Person" /></Grid>
               <Grid item xs={12} sm={6}><FormTextField name="phone" label="Phone" /></Grid>
               <Grid item xs={12} sm={6}><FormTextField name="email" label="Email" /></Grid>
+              <Grid item xs={12} sm={6}><FormTextField name="gstNumber" label="GST No." /></Grid>
+              <Grid item xs={12} sm={6}><FormTextField name="fssaiNumber" label="FSSAI No." /></Grid>
+              <Grid item xs={12} sm={6}><FormFileUpload name="gstCertificateFileKey" label="GST Certificate" module="vendor" /></Grid>
+              <Grid item xs={12} sm={6}><FormFileUpload name="fssaiCertificateFileKey" label="FSSAI Certificate" module="vendor" /></Grid>
               <Grid item xs={12}><FormSelect name="paymentTermsId" label="Payment Terms" options={paymentTermOptions} /></Grid>
               <Grid item xs={12}><FormAutocomplete name="itemsSupplied" label="Items Supplied" options={itemOptions} multiple /></Grid>
             </Grid>

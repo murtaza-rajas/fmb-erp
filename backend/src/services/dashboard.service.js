@@ -8,6 +8,9 @@ const DebitNote = require('../models/DebitNote.model');
 const Vendor = require('../models/Vendor.model');
 const stockLedgerService = require('./stockLedger.service');
 const vendorLedgerService = require('./vendorLedger.service');
+const { PO_STATUS } = require('../constants/enums');
+
+const PENDING_PO_STATUSES = [PO_STATUS.DRAFT, PO_STATUS.ISSUED, PO_STATUS.PARTIALLY_RECEIVED];
 
 const SUMMARY_CACHE_KEY = 'dashboard:summary';
 const SUMMARY_CACHE_TTL_SECONDS = 60;
@@ -18,7 +21,7 @@ async function getSummary() {
 
   const startOfDay = dayjs().startOf('day').toDate();
 
-  const [todaysPurchases, pendingApprovals, pendingPaymentAgg, reorderAlerts, items] = await Promise.all([
+  const [todaysPurchases, pendingApprovals, pendingPaymentAgg, pendingPoAgg, reorderAlerts, items] = await Promise.all([
     PurchaseOrder.aggregate([
       { $match: { issuedAt: { $gte: startOfDay }, isDeleted: false } },
       { $group: { _id: null, count: { $sum: 1 }, totalAmount: { $sum: '$totalAmount' } } },
@@ -27,6 +30,10 @@ async function getSummary() {
     PaymentVoucher.aggregate([
       { $match: { approvalStatus: { $in: ['pending', 'approved'] }, isDeleted: false } },
       { $group: { _id: null, count: { $sum: 1 }, totalAmount: { $sum: '$amount' } } },
+    ]),
+    PurchaseOrder.aggregate([
+      { $match: { status: { $in: PENDING_PO_STATUSES }, isDeleted: false } },
+      { $group: { _id: null, count: { $sum: 1 }, totalAmount: { $sum: '$totalAmount' } } },
     ]),
     stockLedgerService.getReorderAlerts(),
     Item.find({ isActive: true, isDeleted: false }),
@@ -39,6 +46,7 @@ async function getSummary() {
     todaysPurchases: { count: todaysPurchases[0]?.count || 0, totalAmount: todaysPurchases[0]?.totalAmount || 0 },
     pendingApprovals,
     pendingPayments: { count: pendingPaymentAgg[0]?.count || 0, totalAmount: pendingPaymentAgg[0]?.totalAmount || 0 },
+    pendingPurchaseOrders: { count: pendingPoAgg[0]?.count || 0, totalAmount: pendingPoAgg[0]?.totalAmount || 0 },
     lowStock: { count: reorderAlerts.length, items: reorderAlerts.map((a) => ({ itemId: a.item._id, name: a.item.name, currentQuantity: a.currentQuantity, reorderLevel: a.item.reorderLevel })) },
     inventoryValue,
     generatedAt: new Date().toISOString(),
@@ -79,6 +87,21 @@ async function getVendorPerformance() {
   );
 }
 
+async function getPoStatusBreakdown() {
+  const rows = await PurchaseOrder.aggregate([
+    { $match: { isDeleted: false } },
+    { $group: { _id: '$status', count: { $sum: 1 }, totalAmount: { $sum: '$totalAmount' } } },
+  ]);
+
+  const byStatus = new Map(rows.map((r) => [r._id, r]));
+
+  return Object.values(PO_STATUS).map((status) => ({
+    status,
+    count: byStatus.get(status)?.count || 0,
+    totalAmount: byStatus.get(status)?.totalAmount || 0,
+  }));
+}
+
 async function getMonthlyReport({ months = 12 } = {}) {
   const since = dayjs().subtract(months, 'month').startOf('month').toDate();
 
@@ -98,4 +121,4 @@ async function getMonthlyReport({ months = 12 } = {}) {
   return { purchasesByMonth, paymentsByMonth };
 }
 
-module.exports = { getSummary, getVendorPerformance, getMonthlyReport };
+module.exports = { getSummary, getVendorPerformance, getMonthlyReport, getPoStatusBreakdown };

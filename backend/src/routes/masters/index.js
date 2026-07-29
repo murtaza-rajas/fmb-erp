@@ -8,6 +8,7 @@ const paymentTermRoutes = require('./paymentTerm.routes');
 const storeRoutes = require('./store.routes');
 const itemRoutes = require('./item.routes');
 const vendorRoutes = require('./vendor.routes');
+const thaaliBudgetRoutes = require('./thaaliBudget.routes');
 
 const router = Router();
 router.use(authenticate);
@@ -19,5 +20,6 @@ router.use('/payment-terms', paymentTermRoutes);
 router.use('/stores', storeRoutes);
 router.use('/items', itemRoutes);
 router.use('/vendors', vendorRoutes);
+router.use('/thaali-budgets', thaaliBudgetRoutes);
 
 module.exports = router;

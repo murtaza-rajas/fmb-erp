@@ -6,13 +6,26 @@ import PendingActionsOutlinedIcon from '@mui/icons-material/PendingActionsOutlin
 import PaymentsOutlinedIcon from '@mui/icons-material/PaymentsOutlined';
 import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined';
 import InventoryOutlinedIcon from '@mui/icons-material/Inventory2Outlined';
+import AssignmentLateOutlinedIcon from '@mui/icons-material/AssignmentLateOutlined';
 import PageHeader from '../../components/PageHeader';
 import StatCard from '../../components/StatCard';
 import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
-import { useDashboardSummaryQuery, useVendorPerformanceQuery, useMonthlyReportQuery } from './dashboardApi';
+import { useDashboardSummaryQuery, useVendorPerformanceQuery, useMonthlyReportQuery, usePoStatusBreakdownQuery } from './dashboardApi';
 
 const currency = (n) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n || 0);
+
+const STATUS_LABELS = {
+  draft: 'Draft',
+  issued: 'Issued',
+  partially_received: 'Partially Received',
+  received: 'Received',
+  invoiced: 'Invoiced',
+  payment_pending: 'Payment Pending',
+  paid: 'Paid',
+  closed: 'Closed',
+  cancelled: 'Cancelled',
+};
 
 function MonthlyChart({ data }) {
   const labels = data.purchasesByMonth.map((r) => `${r._id.month}/${r._id.year}`);
@@ -38,6 +51,7 @@ export default function DashboardPage() {
   const { data: summary, isLoading: summaryLoading, isError: summaryError, error: summaryErr, refetch: refetchSummary } = useDashboardSummaryQuery();
   const { data: vendors = [], isLoading: vendorsLoading } = useVendorPerformanceQuery();
   const { data: monthly, isLoading: monthlyLoading } = useMonthlyReportQuery(12);
+  const { data: poStatusBreakdown = [], isLoading: poStatusLoading } = usePoStatusBreakdownQuery();
 
   if (summaryError) return <ErrorState error={summaryErr} onRetry={refetchSummary} />;
 
@@ -83,6 +97,16 @@ export default function DashboardPage() {
             subValue="At or below reorder level"
             icon={WarningAmberOutlinedIcon}
             color="error"
+            loading={summaryLoading}
+          />
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <StatCard
+            label="Pending Purchase Orders"
+            value={summary ? currency(summary.pendingPurchaseOrders.totalAmount) : ''}
+            subValue={summary ? `${summary.pendingPurchaseOrders.count} PO(s)` : ''}
+            icon={AssignmentLateOutlinedIcon}
+            color="info"
             loading={summaryLoading}
           />
         </Grid>
@@ -143,6 +167,30 @@ export default function DashboardPage() {
                       <Typography variant="body2">{v.name}</Typography>
                       <Typography variant="body2" fontWeight={600}>{currency(v.totalPurchaseAmount)}</Typography>
                     </Box>
+                  ))}
+                </Stack>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+
+      <Grid container spacing={2} sx={{ mt: 1 }}>
+        <Grid item xs={12}>
+          <Card variant="outlined">
+            <CardContent>
+              <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 2 }}>Purchase Order Lifecycle</Typography>
+              {poStatusLoading ? (
+                <CircularProgress size={20} />
+              ) : (
+                <Stack direction="row" flexWrap="wrap" gap={1}>
+                  {poStatusBreakdown.map((row) => (
+                    <Chip
+                      key={row.status}
+                      label={`${STATUS_LABELS[row.status] || row.status}: ${row.count} (${currency(row.totalAmount)})`}
+                      variant="outlined"
+                      size="small"
+                    />
                   ))}
                 </Stack>
               )}

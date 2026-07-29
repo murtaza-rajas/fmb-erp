@@ -29,5 +29,6 @@ router.get('/stock-ledger', reportController.stockLedger);
 router.get('/payments', reportController.payments);
 router.get('/audit', reportController.audit);
 router.get('/user-activity', reportController.userActivity);
+router.get('/thaali-cost', reportController.thaaliCost);
 
 module.exports = router;

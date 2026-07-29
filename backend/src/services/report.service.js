@@ -1,9 +1,15 @@
+const dayjs = require('dayjs');
+const isoWeek = require('dayjs/plugin/isoWeek');
 const PurchaseOrder = require('../models/PurchaseOrder.model');
 const Payment = require('../models/Payment.model');
 const AuditLog = require('../models/AuditLog.model');
 const Item = require('../models/Item.model');
+const MaterialIssueVoucher = require('../models/MaterialIssueVoucher.model');
+const ThaaliBudget = require('../models/ThaaliBudget.model');
 const dashboardService = require('./dashboard.service');
 const stockLedgerService = require('./stockLedger.service');
+
+dayjs.extend(isoWeek);
 
 function dateRangeFilter(field, { from, to }) {
   if (!from && !to) return {};
@@ -109,6 +115,83 @@ async function getUserActivityReport({ userId, from, to }) {
   }));
 }
 
+function periodKeyForDate(date, groupBy) {
+  const d = dayjs(date);
+  return groupBy === 'month'
+    ? `${d.year()}-${String(d.month() + 1).padStart(2, '0')}`
+    : `${d.isoWeekYear()}-W${String(d.isoWeek()).padStart(2, '0')}`;
+}
+
+// Weekly/monthly cost-per-thaali rollup, grouped by category — the cost side
+// is derived entirely from MaterialIssueVoucher (the one real stock-out
+// transaction; no separate stock-neutral entry exists, per the client's
+// confirmed design). Budget is a separate, independently-entered figure
+// (ThaaliBudget, always stored as a per-week amount) joined in here so the
+// report can show budget vs actual — a monthly budget is the sum of the
+// weekly budgets whose Monday falls in that month, not a separately entered
+// number, per the client's confirmed choice.
+async function getThaaliCostReport({ from, to, category, groupBy = 'week' }) {
+  const costMatch = { isDeleted: false, ...dateRangeFilter('issueDate', { from, to }) };
+  if (category) costMatch.category = category;
+
+  const periodFields = groupBy === 'month'
+    ? { year: { $year: '$issueDate' }, month: { $month: '$issueDate' } }
+    : { year: { $isoWeekYear: '$issueDate' }, week: { $isoWeek: '$issueDate' } };
+
+  const costRows = await MaterialIssueVoucher.aggregate([
+    { $match: costMatch },
+    {
+      $group: {
+        _id: { category: '$category', ...periodFields },
+        totalCost: { $sum: '$totalCost' },
+        thaaliCount: { $sum: '$thaaliCount' },
+        voucherCount: { $sum: 1 },
+      },
+    },
+  ]);
+
+  const costMap = new Map();
+  for (const r of costRows) {
+    const period = groupBy === 'month'
+      ? `${r._id.year}-${String(r._id.month).padStart(2, '0')}`
+      : `${r._id.year}-W${String(r._id.week).padStart(2, '0')}`;
+    costMap.set(`${r._id.category}|${period}`, { totalCost: r.totalCost, thaaliCount: r.thaaliCount, voucherCount: r.voucherCount });
+  }
+
+  const budgetMatch = { isDeleted: false, ...dateRangeFilter('weekStartDate', { from, to }) };
+  if (category) budgetMatch.category = category;
+  const budgets = await ThaaliBudget.find(budgetMatch);
+
+  const budgetMap = new Map();
+  for (const b of budgets) {
+    const key = `${b.category}|${periodKeyForDate(b.weekStartDate, groupBy)}`;
+    budgetMap.set(key, (budgetMap.get(key) || 0) + b.amount);
+  }
+
+  const allKeys = new Set([...costMap.keys(), ...budgetMap.keys()]);
+
+  const rows = [...allKeys].map((key) => {
+    const [rowCategory, period] = key.split('|');
+    const cost = costMap.get(key) || { totalCost: 0, thaaliCount: 0, voucherCount: 0 };
+    const budget = budgetMap.has(key) ? budgetMap.get(key) : null;
+
+    return {
+      category: rowCategory,
+      period,
+      totalCost: cost.totalCost,
+      thaaliCount: cost.thaaliCount,
+      voucherCount: cost.voucherCount,
+      costPerThaali: cost.thaaliCount > 0 ? Number((cost.totalCost / cost.thaaliCount).toFixed(2)) : null,
+      budget,
+      variance: budget != null ? Number((budget - cost.totalCost).toFixed(2)) : null,
+    };
+  });
+
+  rows.sort((a, b) => (a.period === b.period ? a.category.localeCompare(b.category) : a.period.localeCompare(b.period)));
+
+  return rows;
+}
+
 module.exports = {
   getPurchaseReport,
   getVendorReport,
@@ -117,4 +200,5 @@ module.exports = {
   getPaymentReport,
   getAuditReport,
   getUserActivityReport,
+  getThaaliCostReport,
 };

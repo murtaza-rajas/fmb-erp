@@ -23,3 +23,10 @@ export function useMonthlyReportQuery(months = 12) {
     queryFn: async () => (await axiosClient.get('/dashboard/monthly-report', { params: { months } })).data.data,
   });
 }
+
+export function usePoStatusBreakdownQuery() {
+  return useQuery({
+    queryKey: queryKeys.dashboardPoStatusBreakdown,
+    queryFn: async () => (await axiosClient.get('/dashboard/po-status-breakdown')).data.data,
+  });
+}

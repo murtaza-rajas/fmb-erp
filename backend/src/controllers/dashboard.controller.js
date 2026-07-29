@@ -18,4 +18,9 @@ const monthlyReport = asyncHandler(async (req, res) => {
   ApiResponse.send(res, { data });
 });
 
-module.exports = { summary, vendorPerformance, monthlyReport };
+const poStatusBreakdown = asyncHandler(async (req, res) => {
+  const data = await dashboardService.getPoStatusBreakdown();
+  ApiResponse.send(res, { data });
+});
+
+module.exports = { summary, vendorPerformance, monthlyReport, poStatusBreakdown };

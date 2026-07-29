@@ -20,6 +20,7 @@ const CategoriesPage = lazy(() => import('../features/masters/categories/pages/C
 const UnitsPage = lazy(() => import('../features/masters/units/pages/UnitsPage'));
 const TaxesPage = lazy(() => import('../features/masters/taxes/pages/TaxesPage'));
 const PaymentTermsPage = lazy(() => import('../features/masters/paymentTerms/pages/PaymentTermsPage'));
+const ThaaliBudgetsPage = lazy(() => import('../features/masters/thaaliBudgets/pages/ThaaliBudgetsPage'));
 const StoresPage = lazy(() => import('../features/masters/stores/pages/StoresPage'));
 const ItemsListPage = lazy(() => import('../features/masters/items/pages/ItemsListPage'));
 const VendorsListPage = lazy(() => import('../features/masters/vendors/pages/VendorsListPage'));
@@ -35,6 +36,7 @@ const TransfersListPage = lazy(() => import('../features/inventory/transfers/pag
 const DebitNotesListPage = lazy(() => import('../features/inventory/debitNotes/pages/DebitNotesListPage'));
 const CreditNotesListPage = lazy(() => import('../features/inventory/creditNotes/pages/CreditNotesListPage'));
 const StockReturnsListPage = lazy(() => import('../features/inventory/stockReturns/pages/StockReturnsListPage'));
+const MaterialIssueVouchersListPage = lazy(() => import('../features/inventory/materialIssues/pages/MaterialIssueVouchersListPage'));
 const InvoicesListPage = lazy(() => import('../features/invoices/pages/InvoicesListPage'));
 const InvoiceDetailPage = lazy(() => import('../features/invoices/pages/InvoiceDetailPage'));
 const PaymentVouchersListPage = lazy(() => import('../features/finance/paymentVouchers/pages/PaymentVouchersListPage'));
@@ -49,6 +51,7 @@ const StockLedgerReportPage = lazy(() => import('../features/reports/pages/Stock
 const PaymentReportPage = lazy(() => import('../features/reports/pages/PaymentReportPage'));
 const AuditReportPage = lazy(() => import('../features/reports/pages/AuditReportPage'));
 const UserActivityReportPage = lazy(() => import('../features/reports/pages/UserActivityReportPage'));
+const ThaaliCostReportPage = lazy(() => import('../features/reports/pages/ThaaliCostReportPage'));
 const CompanySettingsPage = lazy(() => import('../features/settings/pages/CompanySettingsPage'));
 const ApprovalMatrixPage = lazy(() => import('../features/settings/pages/ApprovalMatrixPage'));
 const SystemSettingsPage = lazy(() => import('../features/settings/pages/SystemSettingsPage'));
@@ -85,6 +88,7 @@ export default function AppRoutes() {
             <Route path="/masters/units" element={<UnitsPage />} />
             <Route path="/masters/taxes" element={<TaxesPage />} />
             <Route path="/masters/payment-terms" element={<PaymentTermsPage />} />
+            <Route path="/masters/thaali-budgets" element={<ThaaliBudgetsPage />} />
             <Route path="/masters/stores" element={<StoresPage />} />
             <Route path="/masters/items" element={<ItemsListPage />} />
             <Route path="/masters/vendors" element={<VendorsListPage />} />
@@ -102,6 +106,7 @@ export default function AppRoutes() {
             <Route path="/inventory/debit-notes" element={<DebitNotesListPage />} />
             <Route path="/inventory/credit-notes" element={<CreditNotesListPage />} />
             <Route path="/inventory/stock-returns" element={<StockReturnsListPage />} />
+            <Route path="/inventory/material-issues" element={<MaterialIssueVouchersListPage />} />
 
             <Route path="/invoices" element={<InvoicesListPage />} />
             <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
@@ -120,6 +125,7 @@ export default function AppRoutes() {
             <Route path="/reports/payments" element={<PaymentReportPage />} />
             <Route path="/reports/audit" element={<AuditReportPage />} />
             <Route path="/reports/user-activity" element={<UserActivityReportPage />} />
+            <Route path="/reports/thaali-cost" element={<ThaaliCostReportPage />} />
 
             <Route path="/settings/company" element={<CompanySettingsPage />} />
             <Route path="/settings/approval-matrix" element={<ApprovalMatrixPage />} />

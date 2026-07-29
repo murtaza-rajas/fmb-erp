@@ -28,6 +28,7 @@ export const navConfig = [
       { label: 'Payment Terms', path: '/masters/payment-terms' },
       { label: 'Stores', path: '/masters/stores' },
       { label: 'Vendors', path: '/masters/vendors' },
+      { label: 'Thaali Budgets', path: '/masters/thaali-budgets' },
     ],
   },
   {
@@ -49,6 +50,7 @@ export const navConfig = [
       { label: 'Adjustments', path: '/inventory/adjustments' },
       { label: 'Transfers', path: '/inventory/transfers' },
       { label: 'Stock Returns', path: '/inventory/stock-returns' },
+      { label: 'Material Issues', path: '/inventory/material-issues' },
       { label: 'Debit Notes', path: '/inventory/debit-notes' },
       { label: 'Credit Notes', path: '/inventory/credit-notes' },
       { label: 'Reorder Alerts', path: '/inventory/reorder-alerts' },
@@ -83,6 +85,7 @@ export const navConfig = [
       { label: 'Payments', path: '/reports/payments' },
       { label: 'Audit Log', path: '/reports/audit' },
       { label: 'User Activity', path: '/reports/user-activity' },
+      { label: 'Thaali Cost', path: '/reports/thaali-cost' },
     ],
   },
   {
