@@ -23,4 +23,8 @@ const update = [
   body('isActive').optional({ values: 'falsy' }).isBoolean(),
 ];
 
-module.exports = { create, update };
+const importItems = [
+  body('storeId').optional({ values: 'falsy' }).isMongoId().withMessage('Invalid store'),
+];
+
+module.exports = { create, update, importItems };

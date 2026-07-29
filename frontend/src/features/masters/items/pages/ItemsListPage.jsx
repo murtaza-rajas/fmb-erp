@@ -107,6 +107,7 @@ export default function ItemsListPage() {
         title="Import Items from Excel"
         useImportMutation={useImportItemsMutation}
         entityLabel="items"
+        showStoreField
       />
       <ConfirmDialog
         open={Boolean(deleteTarget)}

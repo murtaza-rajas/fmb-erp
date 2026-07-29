@@ -11,7 +11,7 @@ const router = Router();
 
 router.get('/', authorize(PERMISSIONS.MASTER_READ), queryParser, itemController.list);
 router.post('/', authorize(PERMISSIONS.MASTER_CREATE), itemValidator.create, validate, itemController.create);
-router.post('/import', authorize(PERMISSIONS.MASTER_CREATE), uploadExcel.single('file'), itemController.importItems);
+router.post('/import', authorize(PERMISSIONS.MASTER_CREATE), uploadExcel.single('file'), itemValidator.importItems, validate, itemController.importItems);
 router.get('/:id', authorize(PERMISSIONS.MASTER_READ), itemController.getById);
 router.patch('/:id', authorize(PERMISSIONS.MASTER_UPDATE), itemValidator.update, validate, itemController.update);
 router.delete('/:id', authorize(PERMISSIONS.MASTER_DELETE), itemController.remove);

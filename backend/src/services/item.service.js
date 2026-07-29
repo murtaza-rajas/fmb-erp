@@ -9,6 +9,9 @@ const { generateCode } = require('../helpers/codeGenerator');
 const { mongoose } = require('../config/db');
 const { parseItemWorkbook } = require('../utils/excelImport/parseItemWorkbook');
 const { PO_STATUS } = require('../constants/enums');
+const storeRepository = require('../repositories/store.repository');
+const stockLedgerService = require('./stockLedger.service');
+const stockAdjustmentService = require('./stockAdjustment.service');
 
 async function resolveSku(requestedSku) {
   if (requestedSku) {
@@ -92,13 +95,19 @@ async function deleteItem(id, actorId) {
 // unit is matched/auto-created by Pack symbol — both are simple lookup
 // masters, safe to create on the fly, unlike the auto-classified category
 // which is a best-effort guess surfaced back in the response for review.
-async function importItems(fileBuffer, actorId) {
-  const { rows, errors } = await parseItemWorkbook(fileBuffer);
+async function importItems(fileBuffer, actorId, storeId) {
+  const { rows, errors, hasOpeningStockColumn } = await parseItemWorkbook(fileBuffer);
   if (errors.length > 0) throw ApiError.validation(errors, 'Could not parse the uploaded item file');
   if (rows.length === 0) throw ApiError.badRequest('No item rows found in the uploaded file');
 
+  if (storeId) {
+    const store = await storeRepository.findById(storeId);
+    if (!store) throw ApiError.notFound('Store not found');
+  }
+
   const session = await mongoose.startSession();
   let summary;
+  let existingNames;
   try {
     await session.withTransaction(async () => {
       const categoryNames = [...new Set(rows.map((r) => r.category))];
@@ -125,25 +134,41 @@ async function importItems(fileBuffer, actorId) {
       );
       const unitIdBySymbol = new Map(unitDocs.map((u) => [u.symbol, u._id]));
 
-      const existingNames = new Set(
+      existingNames = new Set(
         (await Item.find({ name: { $in: rows.map((r) => r.name) } }).session(session)).map((i) => i.name)
       );
 
       const ops = rows.map((row) => {
         const isNew = !existingNames.has(row.name);
+        const set = {
+          name: row.name,
+          categoryId: categoryIdByName.get(row.category),
+          unitId: unitIdBySymbol.get(row.unitSymbol),
+          updatedBy: actorId,
+        };
+        const setOnInsert = {};
+        if (isNew) {
+          setOnInsert.sku = generateCode('ITM');
+          setOnInsert.createdBy = actorId;
+        }
+
+        // row.reorderLevel/standardRate are null when the file didn't carry
+        // that column/cell for this row — preserve the existing item's value
+        // rather than overwriting it with an assumed 0 (see
+        // parseItemWorkbook.js). A brand-new item still needs some value to
+        // satisfy the schema, so it defaults to 0 only on insert.
+        if (row.reorderLevel != null) set.reorderLevel = row.reorderLevel;
+        else if (isNew) setOnInsert.reorderLevel = 0;
+
+        if (row.standardRate != null) set.standardRate = row.standardRate;
+        else if (isNew) setOnInsert.standardRate = 0;
+
         return {
           updateOne: {
             filter: { name: row.name },
             update: {
-              $set: {
-                name: row.name,
-                categoryId: categoryIdByName.get(row.category),
-                unitId: unitIdBySymbol.get(row.unitSymbol),
-                reorderLevel: row.reorderLevel,
-                standardRate: row.standardRate,
-                updatedBy: actorId,
-              },
-              ...(isNew ? { $setOnInsert: { sku: generateCode('ITM'), createdBy: actorId } } : {}),
+              $set: set,
+              ...(Object.keys(setOnInsert).length > 0 ? { $setOnInsert: setOnInsert } : {}),
             },
             upsert: true,
           },
@@ -162,7 +187,42 @@ async function importItems(fileBuffer, actorId) {
     await session.endSession();
   }
 
-  await auditLogService.record({ userId: actorId, action: 'import', module: 'item', entityType: 'Item', entityId: null, after: { totalRows: summary.totalRows, created: summary.created, updated: summary.updated } });
+  // Optional stock reconciliation pass — only runs when a store was given and
+  // the file actually had an "Op. Stock" column. Only applies to items that
+  // already existed before this import; a freshly auto-created item has no
+  // real baseline to reconcile against, so it's reported as skipped instead
+  // of silently given an arbitrary opening balance.
+  if (storeId && hasOpeningStockColumn) {
+    const items = await Item.find({ name: { $in: rows.map((r) => r.name) } });
+    const itemIdByName = new Map(items.map((i) => [i.name, i._id]));
+
+    const skippedNewItems = [];
+    let stockUpdated = 0;
+    let stockUnchanged = 0;
+
+    for (const row of rows) {
+      if (!existingNames.has(row.name)) {
+        skippedNewItems.push(row.name);
+        continue;
+      }
+      const itemId = itemIdByName.get(row.name);
+      const currentBalance = await stockLedgerService.getBalance(itemId, storeId);
+      const delta = Math.round((row.openingStock - currentBalance) * 100) / 100;
+      if (delta === 0) {
+        stockUnchanged += 1;
+        continue;
+      }
+      await stockAdjustmentService.createAdjustment(
+        { itemId, storeId, quantity: delta, reason: 'Stock reconciliation via item Excel import' },
+        actorId
+      );
+      stockUpdated += 1;
+    }
+
+    summary.stock = { updated: stockUpdated, unchanged: stockUnchanged, skippedNewItems };
+  }
+
+  await auditLogService.record({ userId: actorId, action: 'import', module: 'item', entityType: 'Item', entityId: null, after: { totalRows: summary.totalRows, created: summary.created, updated: summary.updated, stock: summary.stock } });
   return summary;
 }
 

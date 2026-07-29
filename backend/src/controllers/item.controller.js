@@ -38,7 +38,7 @@ const lowStockCheck = asyncHandler(async (req, res) => {
 
 const importItems = asyncHandler(async (req, res) => {
   if (!req.file) throw ApiError.badRequest('Excel file is required (field name "file")');
-  const summary = await itemService.importItems(req.file.buffer, req.user._id);
+  const summary = await itemService.importItems(req.file.buffer, req.user._id, req.body.storeId || undefined);
   ApiResponse.send(res, { data: summary });
 });
 

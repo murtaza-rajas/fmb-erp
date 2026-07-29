@@ -11,13 +11,17 @@ function normalizeHeader(h) {
   return String(h ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
-// Only the columns Item.model.js actually needs are mapped — Op. Stock/Purch/
-// Sale/#Others/Ord/Ord Fr/Last Sale describe stock movement, not the item
-// master, and are intentionally not carried over (stock lives in StockLedger,
-// not on Item — see .claude/graph/er-diagram.md).
+// Only the columns Item.model.js actually needs are mapped — Purch/Sale/
+// #Others/Ord/Ord Fr/Last Sale describe stock movement, not the item master,
+// and are intentionally not carried over. Cl Stock is used only to derive
+// standardRate. Op. Stock IS carried over, but only as an optional stock
+// value the caller (item.service.js#importItems) may apply via
+// StockAdjustment when a storeId is given — it's never written to Item
+// itself (stock lives in StockLedger — see .claude/graph/er-diagram.md).
 const HEADER_ALIASES = {
   itemname: 'name',
   pack: 'unitSymbol',
+  opstock: 'openingStock',
   clstock: 'closingStock',
   amount: 'amount',
   minlevel: 'reorderLevel',
@@ -72,21 +76,33 @@ async function parseItemWorkbook(buffer) {
       continue;
     }
 
-    const closingStock = columnMap.closingStock ? Number(row.getCell(columnMap.closingStock).value) || 0 : 0;
-    const amount = columnMap.amount ? Number(row.getCell(columnMap.amount).value) || 0 : 0;
-    const reorderLevel = columnMap.reorderLevel ? Number(row.getCell(columnMap.reorderLevel).value) || 0 : 0;
-    const standardRate = closingStock > 0 ? round2(amount / closingStock) : 0;
+    // null (not 0) whenever a column is missing or this row's cell is blank —
+    // a file that only carries Op. Stock (e.g. a stock-only re-upload) must
+    // not zero out an item's already-known reorderLevel/standardRate just
+    // because it didn't repeat that data; item.service.js#importItems only
+    // overwrites these fields on existing items when they're non-null here.
+    const closingStockCell = columnMap.closingStock ? row.getCell(columnMap.closingStock).value : null;
+    const closingStock = closingStockCell != null ? Number(closingStockCell) || 0 : null;
+    const amountCell = columnMap.amount ? row.getCell(columnMap.amount).value : null;
+    const amount = amountCell != null ? Number(amountCell) || 0 : null;
+    const standardRate = (closingStock != null && amount != null && closingStock > 0) ? Math.max(0, round2(amount / closingStock)) : null;
+
+    const reorderLevelCell = columnMap.reorderLevel ? row.getCell(columnMap.reorderLevel).value : null;
+    const reorderLevel = reorderLevelCell != null ? Math.max(0, Number(reorderLevelCell) || 0) : null;
+
+    const openingStock = columnMap.openingStock ? round2(Number(row.getCell(columnMap.openingStock).value) || 0) : null;
 
     rows.push({
       name,
       unitSymbol,
-      reorderLevel: Math.max(0, reorderLevel),
-      standardRate: Math.max(0, standardRate),
+      reorderLevel,
+      standardRate,
       category: classifyItemCategory(name),
+      openingStock,
     });
   }
 
-  return { rows, errors };
+  return { rows, errors, hasOpeningStockColumn: Boolean(columnMap.openingStock) };
 }
 
 module.exports = { parseItemWorkbook };
