@@ -46,6 +46,7 @@ export const navConfig = [
     permission: 'stock:read',
     children: [
       { label: 'Goods Receipt (GRN)', path: '/inventory/grns' },
+      { label: 'Current Stock', path: '/inventory/current-stock' },
       { label: 'Stock Ledger', path: '/inventory/stock-ledger' },
       { label: 'Adjustments', path: '/inventory/adjustments' },
       { label: 'Transfers', path: '/inventory/transfers' },

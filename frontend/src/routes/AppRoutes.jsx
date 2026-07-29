@@ -99,6 +99,7 @@ export default function AppRoutes() {
             <Route path="/procurement/purchase-orders/:id" element={<PurchaseOrderDetailPage />} />
 
             <Route path="/inventory/grns" element={<GrnsListPage />} />
+            <Route path="/inventory/current-stock" element={<InventoryReportPage />} />
             <Route path="/inventory/stock-ledger" element={<StockLedgerPage />} />
             <Route path="/inventory/reorder-alerts" element={<ReorderAlertsPage />} />
             <Route path="/inventory/adjustments" element={<AdjustmentsListPage />} />
