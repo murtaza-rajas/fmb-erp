@@ -13,14 +13,17 @@ import { useTableState } from '../../../../hooks/useTableState';
 import { useRequisitionsQuery, useCancelRequisitionMutation } from '../requisitionsApi';
 import RequisitionFormDialog from './RequisitionFormDialog';
 import RequisitionDetailDialog from './RequisitionDetailDialog';
+import VendorFormDialog from '../../../masters/vendors/pages/VendorFormDialog';
 
 export default function RequisitionsListPage() {
   const { queryParams, tableProps } = useTableState();
   const { data, isLoading, isError, error, refetch } = useRequisitionsQuery(queryParams);
   const canCreate = usePermission('prn:create');
   const canCancel = usePermission('prn:cancel');
+  const canCreateVendor = usePermission('master:create');
 
   const [creating, setCreating] = useState(false);
+  const [addingVendor, setAddingVendor] = useState(false);
   const [viewTarget, setViewTarget] = useState(null);
   const [cancelTarget, setCancelTarget] = useState(null);
   const { mutateAsync: cancelPrn, isPending: cancelling } = useCancelRequisitionMutation();
@@ -69,7 +72,18 @@ export default function RequisitionsListPage() {
       <PageHeader
         title="Purchase Requisitions"
         subtitle="Store-raised stock requests"
-        actions={canCreate && <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreating(true)}>New Requisition</Button>}
+        actions={
+          <>
+            {canCreateVendor && (
+              <Button variant="outlined" startIcon={<AddIcon />} onClick={() => setAddingVendor(true)}>
+                New Vendor
+              </Button>
+            )}
+            {canCreate && (
+              <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreating(true)}>New Requisition</Button>
+            )}
+          </>
+        }
       />
 
       <DataTable
@@ -86,6 +100,7 @@ export default function RequisitionsListPage() {
       />
 
       <RequisitionFormDialog open={creating} onClose={() => setCreating(false)} />
+      <VendorFormDialog open={addingVendor} onClose={() => setAddingVendor(false)} />
       <RequisitionDetailDialog open={Boolean(viewTarget)} onClose={() => setViewTarget(null)} requisition={viewTarget} />
       <ConfirmDialog
         open={Boolean(cancelTarget)}

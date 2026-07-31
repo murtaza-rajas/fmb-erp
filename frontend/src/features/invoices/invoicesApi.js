@@ -69,3 +69,11 @@ export function useReleaseInvoiceMutation(id) {
     onSuccess: invalidate,
   });
 }
+
+export function useOverrideMatchMutation(id) {
+  const invalidate = useInvalidateInvoices(id);
+  return useMutation({
+    mutationFn: (reason) => axiosClient.patch(`/invoices/${id}/override-match`, { reason }).then((r) => r.data.data),
+    onSuccess: invalidate,
+  });
+}

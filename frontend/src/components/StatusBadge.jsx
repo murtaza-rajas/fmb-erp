@@ -27,6 +27,7 @@ const STATUS_COLOR_MAP = {
   // invoice matching
   matched: 'success',
   mismatched: 'error',
+  overridden: 'secondary',
   none: 'default',
   on_hold: 'warning',
   released: 'success',

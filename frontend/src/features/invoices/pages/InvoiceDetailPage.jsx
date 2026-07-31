@@ -8,6 +8,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
 import PauseCircleOutlineIcon from '@mui/icons-material/PauseCircleOutline';
 import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
+import RuleOutlinedIcon from '@mui/icons-material/RuleOutlined';
 import { useSnackbar } from 'notistack';
 import dayjs from 'dayjs';
 import PageHeader from '../../../components/PageHeader';
@@ -20,6 +21,7 @@ import {
   useHoldInvoiceMutation, useReleaseInvoiceMutation,
 } from '../invoicesApi';
 import HoldInvoiceDialog from './HoldInvoiceDialog';
+import OverrideMatchDialog from './OverrideMatchDialog';
 
 const currency = (n) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(n || 0);
 
@@ -33,9 +35,11 @@ export default function InvoiceDetailPage() {
   const canMatch = usePermission('invoice:match');
   const canHold = usePermission('invoice:hold');
   const canRelease = usePermission('invoice:release');
+  const canOverrideMatch = usePermission('invoice:override_match');
 
   const [holding, setHolding] = useState(false);
   const [releasing, setReleasing] = useState(false);
+  const [overriding, setOverriding] = useState(false);
 
   const { mutateAsync: match, isPending: matching, data: matchResult } = useMatchInvoiceMutation(id);
   const { mutateAsync: release, isPending: releasingRequest } = useReleaseInvoiceMutation(id);
@@ -77,6 +81,9 @@ export default function InvoiceDetailPage() {
             {canRelease && invoice.holdStatus === 'on_hold' && (
               <Button startIcon={<PlayCircleOutlineIcon />} onClick={() => setReleasing(true)}>Release</Button>
             )}
+            {canOverrideMatch && invoice.matchStatus === 'mismatched' && (
+              <Button color="warning" startIcon={<RuleOutlinedIcon />} onClick={() => setOverriding(true)}>Override Match</Button>
+            )}
           </Stack>
         }
       />
@@ -88,6 +95,13 @@ export default function InvoiceDetailPage() {
 
       {invoice.holdStatus === 'on_hold' && invoice.holdReason && (
         <Alert severity="warning" sx={{ mb: 2 }}>On hold: {invoice.holdReason}</Alert>
+      )}
+
+      {invoice.matchStatus === 'overridden' && invoice.matchOverrideReason && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          Match overridden{invoice.matchOverriddenBy?.name ? ` by ${invoice.matchOverriddenBy.name}` : ''}
+          {invoice.matchOverriddenAt ? ` on ${dayjs(invoice.matchOverriddenAt).format('DD MMM YYYY, HH:mm')}` : ''}: {invoice.matchOverrideReason}
+        </Alert>
       )}
 
       {latestDiscrepancies.length > 0 && (
@@ -148,7 +162,10 @@ export default function InvoiceDetailPage() {
                         {dayjs(h.matchedAt).format('DD MMM YYYY, HH:mm')} {h.matchedBy?.name ? `· ${h.matchedBy.name}` : ''}
                       </Typography>
                       {h.discrepancies.length > 0 && (
-                        <Typography variant="caption" color="error.main">{h.discrepancies.length} discrepanc{h.discrepancies.length === 1 ? 'y' : 'ies'}</Typography>
+                        <Typography variant="caption" color="error.main" display="block">{h.discrepancies.length} discrepanc{h.discrepancies.length === 1 ? 'y' : 'ies'}</Typography>
+                      )}
+                      {h.reason && (
+                        <Typography variant="caption" color="text.secondary" display="block">Reason: {h.reason}</Typography>
                       )}
                     </Box>
                   ))}
@@ -160,6 +177,7 @@ export default function InvoiceDetailPage() {
       </Grid>
 
       <HoldInvoiceDialog open={holding} onClose={() => setHolding(false)} invoiceId={id} />
+      <OverrideMatchDialog open={overriding} onClose={() => setOverriding(false)} invoiceId={id} />
       <ConfirmDialog
         open={releasing}
         onClose={() => setReleasing(false)}

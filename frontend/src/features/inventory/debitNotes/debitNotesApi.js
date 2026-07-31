@@ -2,13 +2,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axiosClient from '../../../services/axiosClient';
 import { queryKeys } from '../../../app/queryClient';
 
-export function useDebitNotesQuery(params = {}) {
+export function useDebitNotesQuery(params = {}, { enabled = true } = {}) {
   return useQuery({
     queryKey: queryKeys.debitNotes(params),
     queryFn: async () => {
       const { data } = await axiosClient.get('/inventory/debit-notes', { params });
       return { items: data.data, meta: data.meta };
     },
+    enabled,
     placeholderData: (prev) => prev,
   });
 }

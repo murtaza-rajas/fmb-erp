@@ -27,6 +27,11 @@ const MATCH_STATUS = Object.freeze({
   PENDING: 'pending',
   MATCHED: 'matched',
   MISMATCHED: 'mismatched',
+  // A mismatched invoice that Purchase has manually accepted with a
+  // documented reason (e.g. vendor bills full ordered qty regardless of
+  // damage) rather than one the automated match cleared on its own — kept
+  // distinct from MATCHED so reports/audit can tell the two apart.
+  OVERRIDDEN: 'overridden',
 });
 
 const HOLD_STATUS = Object.freeze({
@@ -91,6 +96,7 @@ const STOCK_TRANSFER_STATUS = Object.freeze({
 const NOTE_STATUS = Object.freeze({
   OPEN: 'open',
   SETTLED: 'settled',
+  WAIVED: 'waived',
 });
 
 const REJECTION_REASON = Object.freeze({

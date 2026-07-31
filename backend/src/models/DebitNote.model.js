@@ -36,6 +36,13 @@ const debitNoteSchema = new Schema({
   totalAmount: { type: Number, required: true, min: 0 },
   status: { type: String, enum: Object.values(NOTE_STATUS), default: NOTE_STATUS.OPEN },
   attachments: { type: [attachmentSchema], default: [] },
+  // Set only via PaymentVoucher approval when Finance chooses to pay the
+  // vendor in full despite this debit note (e.g. vendor terms for perishables
+  // don't allow deduction for damage) — the reversing ledger credit is posted
+  // in the same transaction, see paymentVoucher.service.js#approveVoucher.
+  waivedByVoucherId: { type: Schema.Types.ObjectId, ref: 'PaymentVoucher', default: null },
+  waivedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+  waivedAt: { type: Date, default: null },
 });
 
 debitNoteSchema.plugin(auditablePlugin);

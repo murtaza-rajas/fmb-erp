@@ -112,11 +112,15 @@ erDiagram
     USER ||--o{ PAYMENT : "paidBy"
     VENDOR ||--o{ ADVANCE_PAYMENT : "vendorId"
     VENDOR_INVOICE ||--o| ADVANCE_PAYMENT : "adjustedAgainstInvoiceId (optional)"
+    USER ||--o{ VENDOR_INVOICE : "matchOverriddenBy (optional)"
+    PAYMENT_VOUCHER ||--o{ DEBIT_NOTE : "waivedByVoucherId (optional, see Inventory section)"
 
     VENDOR_INVOICE {
         string invoiceNumber "vendor's own number, not auto-generated"
-        string matchStatus "pending|matched|mismatched"
+        string matchStatus "pending|matched|mismatched|overridden"
         string holdStatus "none|held"
+        string matchOverrideReason "set only via override-match"
+        ObjectId matchOverriddenBy FK "optional, User"
     }
     PAYMENT_VOUCHER {
         string voucherNumber UK
@@ -129,8 +133,23 @@ erDiagram
 whole payment flow, and it is hard-restricted to `staffType: 'paid'` users at three separate points
 (role assignment, role permission update, and the approval action itself) — never to "Khidmat Gujar"
 staff. See [[project-org-context]] memory. A `Payment` cannot exist without an `approved` voucher, which
-cannot exist without a `matched` `VendorInvoice`, which cannot exist without a linked `PurchaseOrder` +
-`Grn` — so the DB structure itself enforces "no payment without matched PO+GRN+Invoice."
+cannot exist without a `matched` (or `overridden`, see below) `VendorInvoice`, which cannot exist
+without a linked `PurchaseOrder` + `Grn` — so the DB structure itself enforces "no payment without
+matched PO+GRN+Invoice."
+
+**Match override (`overridden`) — a documented exception, not a bypass**: the auto three-way match
+(`vendorInvoice.service.js#matchInvoice`) compares the invoice quantity against the GRN's accepted
+`receivedQty` only (never `rejectedQty`), so a vendor who bills for the *full* ordered quantity despite
+some goods being rejected as damaged at GRN will always come back `mismatched` — this is intentional,
+not a bug. `overrideMatch` (Purchase-only, `invoice:override_match` permission) lets that specific,
+known discrepancy be manually accepted with a mandatory reason, moving the invoice to a distinct
+`overridden` status (never silently reused as `matched`, so reports/audit can always tell an
+auto-cleared match from a manually-accepted one) and unblocking `PaymentVoucher` creation exactly like a
+clean match would. The reason is stored both on `VendorInvoice.matchOverrideReason` and as a `reason` on
+the `overridden` `InvoiceMatchLog` entry (which also carries forward the original discrepancies, so the
+override doesn't erase *why* it was needed). Added for the case of vendor terms that bill perishables in
+full regardless of rejected quantity — see conversation history, not SOP-literal, confirmed with user
+before implementing.
 
 ## Inventory adjustments / transfers / returns / notes
 
@@ -153,7 +172,15 @@ erDiagram
     GRN ||--o{ DEBIT_NOTE : "grnId (optional)"
     ITEM ||--o{ DEBIT_NOTE : "itemId"
     USER ||--o{ DEBIT_NOTE : "uploadedBy"
+    USER ||--o{ DEBIT_NOTE : "waivedBy (optional)"
     VENDOR ||--o{ CREDIT_NOTE : "vendorId"
+
+    DEBIT_NOTE {
+        string dnNumber UK
+        number totalAmount
+        string status "open|settled|waived"
+        ObjectId waivedByVoucherId FK "optional, PaymentVoucher"
+    }
 
     STOCK_LEDGER {
         string transactionType "grn_receipt|adjustment|transfer_out|transfer_in|return|..."
@@ -163,6 +190,18 @@ erDiagram
         number balanceAfter
     }
 ```
+
+**Debit note waiver (`waived`)**: a `DebitNote` is normally auto-created by `grn.service.js` whenever a
+GRN line has `rejectedQty > 0`, and posts a debit (reduces payable) to the vendor ledger — the SOP's
+"damaged goods excluded from payment" default. `waived` is the opt-out: settable *only* during
+`PaymentVoucher` approval (`paymentVoucher.service.js#waiveDebitNote`, same transaction as the approval
+itself), for when Finance decides to pay the vendor in full despite the rejection anyway. Waiving posts
+a reversing credit ledger entry so the vendor ledger still nets to zero once payment is made — it does
+not delete or hide the debit note, which stays visible with its original reason (`rejectionReason`,
+`remarks`) plus `waivedBy`/`waivedAt`/`waivedByVoucherId` for who/when/why it was overridden. See the
+match-override note above — the two features are usually used together (override the invoice match,
+then waive the debit note it was raised against) but are independent: a debit note can be waived without
+any invoice ever having mismatched, and an override doesn't require waiving anything.
 
 **Polymorphic refs — not real foreign keys**: `StockLedger.refId`/`refType` and
 `VendorLedgerEntry.refId`/`refType` are a manual polymorphic-association pattern (a plain `ObjectId`

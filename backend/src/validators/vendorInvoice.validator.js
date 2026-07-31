@@ -14,4 +14,6 @@ const create = [
 
 const hold = [body('reason').notEmpty().withMessage('reason is required')];
 
-module.exports = { create, hold };
+const overrideMatch = [body('reason').notEmpty().withMessage('reason is required')];
+
+module.exports = { create, hold, overrideMatch };

@@ -25,9 +25,12 @@ const schema = yup.object({
 
 export default function PaymentVoucherFormDialog({ open, onClose }) {
   const methods = useForm({ resolver: yupResolver(schema), defaultValues: { invoiceId: '', amount: '', paymentMode: '' } });
-  // Only matched, un-held invoices can actually have a voucher raised — the
-  // backend enforces this too, but filtering here avoids a predictable 409.
-  const { data: invoicesData } = useInvoicesQuery({ limit: 100, filter: { matchStatus: 'matched' } });
+  // Only matched (or manually overridden) and un-held invoices can actually
+  // have a voucher raised — the backend enforces this too, but filtering
+  // here avoids a predictable 409. Filtered client-side since matchStatus
+  // can be either of two values and the list endpoint's filter only does
+  // exact-value equality.
+  const { data: invoicesData } = useInvoicesQuery({ limit: 100 });
   const { mutateAsync, isPending, error } = useCreatePaymentVoucherMutation();
   const { enqueueSnackbar } = useSnackbar();
 
@@ -44,7 +47,7 @@ export default function PaymentVoucherFormDialog({ open, onClose }) {
   };
 
   const invoiceOptions = (invoicesData?.items || [])
-    .filter((inv) => inv.holdStatus !== 'on_hold')
+    .filter((inv) => inv.holdStatus !== 'on_hold' && ['matched', 'overridden'].includes(inv.matchStatus))
     .map((inv) => ({ value: inv._id, label: `${inv.invoiceNumber} — ${inv.vendorId?.name || ''} (${inv.totalAmount})` }));
 
   return (

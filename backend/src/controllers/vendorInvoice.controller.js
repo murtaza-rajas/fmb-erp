@@ -33,9 +33,14 @@ const release = asyncHandler(async (req, res) => {
   ApiResponse.send(res, { data: invoice });
 });
 
+const overrideMatch = asyncHandler(async (req, res) => {
+  const invoice = await invoiceService.overrideMatch(req.params.id, req.body.reason, req.user._id);
+  ApiResponse.send(res, { data: invoice });
+});
+
 const matchHistory = asyncHandler(async (req, res) => {
   const history = await invoiceService.getMatchHistory(req.params.id);
   ApiResponse.send(res, { data: history });
 });
 
-module.exports = { create, list, getById, match, hold, release, matchHistory };
+module.exports = { create, list, getById, match, hold, release, overrideMatch, matchHistory };

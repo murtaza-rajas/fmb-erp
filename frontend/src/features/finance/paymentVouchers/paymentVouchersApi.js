@@ -21,6 +21,13 @@ function useInvalidateVouchers() {
   };
 }
 
+// Approving a voucher can waive debit notes, changing their status —
+// invalidated separately from useInvalidateVouchers since only approve needs it.
+function useInvalidateDebitNotesAfterApproval() {
+  const queryClient = useQueryClient();
+  return () => queryClient.invalidateQueries({ queryKey: ['debitNotes'] });
+}
+
 export function useCreatePaymentVoucherMutation() {
   const invalidate = useInvalidateVouchers();
   return useMutation({
@@ -31,9 +38,14 @@ export function useCreatePaymentVoucherMutation() {
 
 export function useApprovePaymentVoucherMutation() {
   const invalidate = useInvalidateVouchers();
+  const invalidateDebitNotes = useInvalidateDebitNotesAfterApproval();
   return useMutation({
-    mutationFn: (id) => axiosClient.patch(`/finance/payment-vouchers/${id}/approve`).then((r) => r.data.data),
-    onSuccess: invalidate,
+    mutationFn: ({ id, waivedDebitNoteIds }) =>
+      axiosClient.patch(`/finance/payment-vouchers/${id}/approve`, { waivedDebitNoteIds }).then((r) => r.data.data),
+    onSuccess: () => {
+      invalidate();
+      invalidateDebitNotes();
+    },
   });
 }
 

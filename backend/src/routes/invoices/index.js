@@ -17,5 +17,6 @@ router.post('/:id/match', authorize(PERMISSIONS.INVOICE_MATCH), invoiceControlle
 router.get('/:id/match-history', authorize(PERMISSIONS.INVOICE_READ), invoiceController.matchHistory);
 router.patch('/:id/hold', authorize(PERMISSIONS.INVOICE_HOLD), invoiceValidator.hold, validate, invoiceController.hold);
 router.patch('/:id/release', authorize(PERMISSIONS.INVOICE_RELEASE), invoiceController.release);
+router.patch('/:id/override-match', authorize(PERMISSIONS.INVOICE_OVERRIDE_MATCH), invoiceValidator.overrideMatch, validate, invoiceController.overrideMatch);
 
 module.exports = router;

@@ -21,7 +21,10 @@ const invoiceMatchLogSchema = new Schema(
     grnId: { type: Schema.Types.ObjectId, ref: 'Grn', required: true },
     discrepancies: { type: [discrepancySchema], default: [] },
     matchedBy: { type: Schema.Types.ObjectId, ref: 'User' },
-    result: { type: String, enum: [MATCH_STATUS.MATCHED, MATCH_STATUS.MISMATCHED], required: true },
+    result: { type: String, enum: [MATCH_STATUS.MATCHED, MATCH_STATUS.MISMATCHED, MATCH_STATUS.OVERRIDDEN], required: true },
+    // Only set for a MATCH_STATUS.OVERRIDDEN entry — the mandatory reason
+    // Purchase gave for manually accepting a known discrepancy.
+    reason: { type: String, trim: true },
   },
   { timestamps: { createdAt: 'matchedAt', updatedAt: false } }
 );

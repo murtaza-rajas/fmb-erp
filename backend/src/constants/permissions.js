@@ -53,6 +53,7 @@ const PERMISSIONS = Object.freeze({
   INVOICE_MATCH: 'invoice:match',
   INVOICE_HOLD: 'invoice:hold',
   INVOICE_RELEASE: 'invoice:release',
+  INVOICE_OVERRIDE_MATCH: 'invoice:override_match',
 
   PAYMENT_VOUCHER_CREATE: 'payment_voucher:create',
   PAYMENT_VOUCHER_READ: 'payment_voucher:read',

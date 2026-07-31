@@ -27,6 +27,9 @@ const vendorInvoiceSchema = new Schema({
   matchStatus: { type: String, enum: Object.values(MATCH_STATUS), default: MATCH_STATUS.PENDING },
   holdStatus: { type: String, enum: Object.values(HOLD_STATUS), default: HOLD_STATUS.NONE },
   holdReason: { type: String, trim: true },
+  matchOverrideReason: { type: String, trim: true },
+  matchOverriddenBy: { type: Schema.Types.ObjectId, ref: 'User' },
+  matchOverriddenAt: { type: Date },
 });
 
 vendorInvoiceSchema.index({ vendorId: 1, matchStatus: 1 });

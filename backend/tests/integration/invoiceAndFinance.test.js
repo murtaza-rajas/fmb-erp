@@ -156,3 +156,75 @@ describe('Finance: the SOP guarantee — no payment without a matched PO + GRN +
     expect(duplicatePayment.status).toBe(409);
   });
 });
+
+describe('Match override + debit note waiver — vendor bills full qty despite rejected/damaged goods', () => {
+  test('mismatched invoice cannot get a voucher until overridden; waiving the auto-debit-note at approval nets the vendor ledger to zero', async () => {
+    const prnRes = await request(app)
+      .post('/api/v1/procurement/requisitions')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ storeId, items: [{ itemId, quantity: 10, neededByDate: '2026-08-01' }] });
+    const poRes = await request(app)
+      .post('/api/v1/procurement/purchase-orders')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ prnId: prnRes.body.data._id, vendorId, items: [{ itemId, quantity: 10, rate: 100 }] });
+    const poId = poRes.body.data._id;
+    await request(app).patch(`/api/v1/procurement/purchase-orders/${poId}/issue`).set('Authorization', `Bearer ${token}`);
+
+    // 8 accepted, 2 rejected as damaged — but the vendor still bills for all 10.
+    const grnRes = await request(app)
+      .post('/api/v1/inventory/grns')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ poId, storeId, items: [{ itemId, receivedQty: 8, rejectedQty: 2, rejectionReason: 'damaged', remarks: '2kg damaged in transit' }] });
+    const grnId = grnRes.body.data.grn._id;
+    const debitNoteId = grnRes.body.data.debitNote._id;
+    expect(grnRes.body.data.debitNote.totalAmount).toBe(200);
+
+    const invRes = await request(app)
+      .post('/api/v1/invoices')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ invoiceNumber: 'INV-DAMAGE-1', vendorId, poId, grnId, items: [{ itemId, quantity: 10, rate: 100 }] });
+    const invoiceId = invRes.body.data._id;
+
+    const matchRes = await request(app).post(`/api/v1/invoices/${invoiceId}/match`).set('Authorization', `Bearer ${token}`);
+    expect(matchRes.body.data.result).toBe('mismatched');
+
+    const blockedVoucher = await request(app)
+      .post('/api/v1/finance/payment-vouchers')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ invoiceId, paymentMode: 'neft' });
+    expect(blockedVoucher.status).toBe(409);
+
+    const overrideRes = await request(app)
+      .patch(`/api/v1/invoices/${invoiceId}/override-match`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ reason: 'Vendor bills full qty per agreed terms for perishables; 2kg damaged, see GRN remarks' });
+    expect(overrideRes.status).toBe(200);
+    expect(overrideRes.body.data.matchStatus).toBe('overridden');
+
+    const voucherRes = await request(app)
+      .post('/api/v1/finance/payment-vouchers')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ invoiceId, paymentMode: 'neft' });
+    expect(voucherRes.status).toBe(201);
+    expect(voucherRes.body.data.amount).toBe(1000);
+
+    await request(app)
+      .patch(`/api/v1/finance/payment-vouchers/${voucherRes.body.data._id}/approve`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ waivedDebitNoteIds: [debitNoteId] });
+
+    const dnRes = await request(app).get(`/api/v1/inventory/debit-notes/${debitNoteId}`).set('Authorization', `Bearer ${token}`);
+    expect(dnRes.body.data.status).toBe('waived');
+
+    await request(app)
+      .post('/api/v1/finance/payments')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ voucherId: voucherRes.body.data._id, transactionRef: 'TXN-DAMAGE-1' });
+
+    const poFinal = await request(app).get(`/api/v1/procurement/purchase-orders/${poId}`).set('Authorization', `Bearer ${token}`);
+    expect(poFinal.body.data.status).toBe('closed');
+
+    const ledgerRes = await request(app).get(`/api/v1/finance/vendor-ledger/${vendorId}`).set('Authorization', `Bearer ${token}`);
+    expect(ledgerRes.body.data[0].balanceAfter).toBe(0);
+  });
+});

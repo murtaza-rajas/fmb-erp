@@ -1,13 +1,16 @@
+const { mongoose } = require('../config/db');
 const paymentVoucherRepository = require('../repositories/paymentVoucher.repository');
 const vendorInvoiceRepository = require('../repositories/vendorInvoice.repository');
 const purchaseOrderRepository = require('../repositories/purchaseOrder.repository');
 const poStatusHistoryRepository = require('../repositories/poStatusHistory.repository');
 const userRepository = require('../repositories/user.repository');
+const debitNoteRepository = require('../repositories/debitNote.repository');
+const vendorLedgerService = require('./vendorLedger.service');
 const ApiError = require('../utils/ApiError');
 const auditLogService = require('./auditLog.service');
 const notificationService = require('./notification.service');
 const { generateDocumentNumber } = require('../helpers/numberGenerator');
-const { APPROVAL_STATUS, MATCH_STATUS, HOLD_STATUS, PO_STATUS } = require('../constants/enums');
+const { APPROVAL_STATUS, MATCH_STATUS, HOLD_STATUS, PO_STATUS, NOTE_STATUS } = require('../constants/enums');
 const { STAFF_TYPES, ROLES } = require('../constants/roles');
 
 // Notification failures must never block the underlying financial action —
@@ -41,7 +44,7 @@ function notifyCreator(voucher, title, message) {
 async function createVoucher(payload, actorId) {
   const invoice = await vendorInvoiceRepository.findById(payload.invoiceId);
   if (!invoice) throw ApiError.notFound('Vendor Invoice not found');
-  if (invoice.matchStatus !== MATCH_STATUS.MATCHED) {
+  if (![MATCH_STATUS.MATCHED, MATCH_STATUS.OVERRIDDEN].includes(invoice.matchStatus)) {
     throw ApiError.conflict('Cannot raise a payment voucher against an invoice that has not been matched (PO + GRN + Invoice)');
   }
   if (invoice.holdStatus === HOLD_STATUS.ON_HOLD) {
@@ -88,11 +91,38 @@ async function getVoucherById(id) {
   return voucher;
 }
 
+// Reverses a debit note's ledger effect so approving this voucher for the
+// full invoice amount doesn't leave the vendor's payable balance short by the
+// debited amount — used when Finance decides not to deduct for damage (e.g.
+// vendor terms for perishables bill for the full ordered quantity regardless
+// of rejected quantity). Must run inside the caller's transaction: the ledger
+// reversal and the debit note's status change have to commit or roll back
+// together with the voucher approval itself.
+async function waiveDebitNote(dn, voucher, actor, { session }) {
+  if (dn.status !== NOTE_STATUS.OPEN) {
+    throw ApiError.conflict(`Debit Note ${dn.dnNumber} is not open and cannot be waived`);
+  }
+  if (!dn.vendorId.equals(voucher.vendorId)) {
+    throw ApiError.badRequest(`Debit Note ${dn.dnNumber} does not belong to this voucher's vendor`);
+  }
+
+  await vendorLedgerService.recordEntry(
+    { vendorId: dn.vendorId, entryType: 'debit_note', refType: 'DebitNote', refId: dn._id, credit: dn.totalAmount },
+    { session }
+  );
+
+  await debitNoteRepository.updateById(
+    dn._id,
+    { status: NOTE_STATUS.WAIVED, waivedByVoucherId: voucher._id, waivedBy: actor._id, waivedAt: new Date(), updatedBy: actor._id },
+    { session }
+  );
+}
+
 // Defense-in-depth: the payment_voucher:approve permission is already
 // restricted to paid-staff roles (see services/helpers/staffTypeGate.js), but
 // this re-checks the *acting user's* staffType directly at the point of
 // approval, per the SOP's Paid vs Khidmat Gujar restriction.
-async function approveVoucher(id, actor) {
+async function approveVoucher(id, actor, waivedDebitNoteIds = []) {
   if (actor.staffType !== STAFF_TYPES.PAID) {
     throw ApiError.forbidden('Payment approval is restricted to paid staff', 'PAYMENT_APPROVAL_RESTRICTED_TO_PAID_STAFF');
   }
@@ -103,14 +133,49 @@ async function approveVoucher(id, actor) {
     throw ApiError.conflict(`Voucher is already ${voucher.approvalStatus}`);
   }
 
-  const updated = await paymentVoucherRepository.updateById(id, {
-    approvalStatus: APPROVAL_STATUS.APPROVED,
-    approvedBy: actor._id,
-    approvedAt: new Date(),
-    updatedBy: actor._id,
-  });
+  let debitNotesToWaive = [];
+  if (waivedDebitNoteIds.length > 0) {
+    const invoice = await vendorInvoiceRepository.findById(voucher.invoiceId);
+    if (!invoice) throw ApiError.notFound('Vendor Invoice not found');
 
-  await auditLogService.record({ userId: actor._id, action: 'approve', module: 'payment_voucher', entityType: 'PaymentVoucher', entityId: id, before: { approvalStatus: APPROVAL_STATUS.PENDING }, after: { approvalStatus: APPROVAL_STATUS.APPROVED } });
+    debitNotesToWaive = await debitNoteRepository.findByIds(waivedDebitNoteIds);
+    if (debitNotesToWaive.length !== waivedDebitNoteIds.length) {
+      throw ApiError.badRequest('One or more debit notes to waive could not be found');
+    }
+    for (const dn of debitNotesToWaive) {
+      if (!dn.poId?.equals(invoice.poId) || !dn.grnId?.equals(invoice.grnId)) {
+        throw ApiError.badRequest(`Debit Note ${dn.dnNumber} is not linked to this voucher's PO/GRN`);
+      }
+    }
+  }
+
+  const session = await mongoose.startSession();
+  let updated;
+  try {
+    await session.withTransaction(async () => {
+      updated = await paymentVoucherRepository.updateById(
+        id,
+        { approvalStatus: APPROVAL_STATUS.APPROVED, approvedBy: actor._id, approvedAt: new Date(), updatedBy: actor._id },
+        { session }
+      );
+
+      for (const dn of debitNotesToWaive) {
+        await waiveDebitNote(dn, voucher, actor, { session });
+      }
+    });
+  } finally {
+    await session.endSession();
+  }
+
+  await auditLogService.record({
+    userId: actor._id,
+    action: 'approve',
+    module: 'payment_voucher',
+    entityType: 'PaymentVoucher',
+    entityId: id,
+    before: { approvalStatus: APPROVAL_STATUS.PENDING },
+    after: { approvalStatus: APPROVAL_STATUS.APPROVED, waivedDebitNoteIds },
+  });
   await notifyCreator(voucher, 'Payment voucher approved', `Voucher ${voucher.voucherNumber} has been approved.`);
   return updated;
 }

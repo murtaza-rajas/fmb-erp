@@ -3,16 +3,15 @@ import { Button, IconButton, Tooltip } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined';
-import { useSnackbar } from 'notistack';
 import PageHeader from '../../../../components/PageHeader';
 import DataTable from '../../../../components/DataTable';
 import StatusBadge from '../../../../components/StatusBadge';
-import ConfirmDialog from '../../../../components/ConfirmDialog';
 import { usePermission } from '../../../../hooks/usePermission';
 import { useTableState } from '../../../../hooks/useTableState';
-import { usePaymentVouchersQuery, useApprovePaymentVoucherMutation } from '../paymentVouchersApi';
+import { usePaymentVouchersQuery } from '../paymentVouchersApi';
 import PaymentVoucherFormDialog from './PaymentVoucherFormDialog';
 import RejectVoucherDialog from './RejectVoucherDialog';
+import ApproveVoucherDialog from './ApproveVoucherDialog';
 
 const currency = (n) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(n || 0);
 
@@ -26,18 +25,6 @@ export default function PaymentVouchersListPage() {
   const [creating, setCreating] = useState(false);
   const [approveTarget, setApproveTarget] = useState(null);
   const [rejectTarget, setRejectTarget] = useState(null);
-  const { mutateAsync: approve, isPending: approving, error: approveError } = useApprovePaymentVoucherMutation();
-  const { enqueueSnackbar } = useSnackbar();
-
-  const handleApprove = async () => {
-    try {
-      await approve(approveTarget._id);
-      enqueueSnackbar('Voucher approved', { variant: 'success' });
-      setApproveTarget(null);
-    } catch {
-      // error surfaces in the confirm dialog via approveError
-    }
-  };
 
   const columns = useMemo(
     () => [
@@ -99,16 +86,7 @@ export default function PaymentVouchersListPage() {
 
       <PaymentVoucherFormDialog open={creating} onClose={() => setCreating(false)} />
       <RejectVoucherDialog open={Boolean(rejectTarget)} onClose={() => setRejectTarget(null)} voucher={rejectTarget} />
-      <ConfirmDialog
-        open={Boolean(approveTarget)}
-        onClose={() => setApproveTarget(null)}
-        onConfirm={handleApprove}
-        loading={approving}
-        title="Approve payment voucher"
-        description={approveError?.response?.data?.error?.message || `Approve ${approveTarget?.voucherNumber} for ${currency(approveTarget?.amount)}?`}
-        confirmLabel="Approve"
-        confirmColor="success"
-      />
+      <ApproveVoucherDialog open={Boolean(approveTarget)} onClose={() => setApproveTarget(null)} voucher={approveTarget} />
     </>
   );
 }

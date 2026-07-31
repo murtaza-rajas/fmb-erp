@@ -10,4 +10,9 @@ const create = [
 
 const reject = [body('reason').notEmpty().withMessage('reason is required')];
 
-module.exports = { create, reject };
+const approve = [
+  body('waivedDebitNoteIds').optional({ values: 'falsy' }).isArray().withMessage('waivedDebitNoteIds must be an array'),
+  body('waivedDebitNoteIds.*').isMongoId().withMessage('Each waived debit note id must be a valid id'),
+];
+
+module.exports = { create, reject, approve };

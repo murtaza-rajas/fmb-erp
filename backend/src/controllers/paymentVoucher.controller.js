@@ -19,7 +19,7 @@ const getById = asyncHandler(async (req, res) => {
 });
 
 const approve = asyncHandler(async (req, res) => {
-  const voucher = await voucherService.approveVoucher(req.params.id, req.user);
+  const voucher = await voucherService.approveVoucher(req.params.id, req.user, req.body.waivedDebitNoteIds);
   ApiResponse.send(res, { data: voucher });
 });
 
