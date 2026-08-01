@@ -55,7 +55,7 @@ export default function MaterialIssueVoucherFormDialog({ open, onClose }) {
     }
   };
 
-  const itemOptions = items.map((i) => ({ value: i._id, label: `${i.name} (${i.sku})` }));
+  const itemOptions = items.map((i) => ({ value: i._id, label: i.name }));
   const storeOptions = (storesData?.items || []).map((s) => ({ value: s._id, label: s.name }));
 
   return (

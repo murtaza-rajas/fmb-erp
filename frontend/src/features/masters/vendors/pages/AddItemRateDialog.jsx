@@ -31,7 +31,7 @@ export default function AddItemRateDialog({ open, onClose, vendorId }) {
     }
   };
 
-  const itemOptions = items.map((i) => ({ value: i._id, label: `${i.name} (${i.sku})` }));
+  const itemOptions = items.map((i) => ({ value: i._id, label: i.name }));
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>

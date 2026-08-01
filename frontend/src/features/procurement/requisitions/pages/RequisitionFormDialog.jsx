@@ -88,7 +88,7 @@ export default function RequisitionFormDialog({ open, onClose }) {
   };
 
   const storeOptions = (storesData?.items || []).map((s) => ({ value: s._id, label: s.name }));
-  const itemOptions = items.map((i) => ({ value: i._id, label: `${i.name} (${i.sku}) — ${i.unitId?.symbol || 'no unit'}` }));
+  const itemOptions = items.map((i) => ({ value: i._id, label: `${i.name} — ${i.unitId?.symbol || 'no unit'}` }));
   const unitByItemId = Object.fromEntries(items.map((i) => [i._id, i.unitId?.symbol]));
 
   return (

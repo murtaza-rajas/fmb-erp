@@ -76,7 +76,7 @@ export default function DebitNoteFormDialog({ open, onClose }) {
   };
 
   const vendorOptions = vendors.map((v) => ({ value: v._id, label: v.name }));
-  const itemOptions = items.map((i) => ({ value: i._id, label: `${i.name} (${i.sku})` }));
+  const itemOptions = items.map((i) => ({ value: i._id, label: i.name }));
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
