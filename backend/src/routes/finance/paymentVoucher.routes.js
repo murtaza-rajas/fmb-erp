@@ -10,6 +10,7 @@ const router = Router();
 
 router.get('/', authorize(PERMISSIONS.PAYMENT_VOUCHER_READ), queryParser, voucherController.list);
 router.post('/', authorize(PERMISSIONS.PAYMENT_VOUCHER_CREATE), voucherValidator.create, validate, voucherController.create);
+router.get('/available-invoices', authorize(PERMISSIONS.PAYMENT_VOUCHER_CREATE), voucherController.availableInvoices);
 router.get('/:id', authorize(PERMISSIONS.PAYMENT_VOUCHER_READ), voucherController.getById);
 router.patch('/:id/approve', authorize(PERMISSIONS.PAYMENT_VOUCHER_APPROVE), voucherValidator.approve, validate, voucherController.approve);
 router.patch('/:id/reject', authorize(PERMISSIONS.PAYMENT_VOUCHER_REJECT), voucherValidator.reject, validate, voucherController.reject);

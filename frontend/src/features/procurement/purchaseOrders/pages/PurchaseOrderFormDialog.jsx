@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm, FormProvider, useFieldArray, useWatch } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
@@ -13,8 +13,10 @@ import FormSelect from '../../../../components/form/FormSelect';
 import FormAutocomplete from '../../../../components/form/FormAutocomplete';
 import { useOpenRequisitionsQuery, useRequisitionQuery } from '../../requisitions/requisitionsApi';
 import { useAllVendorsQuery } from '../../../masters/vendors/vendorsApi';
+import VendorFormDialog from '../../../masters/vendors/pages/VendorFormDialog';
 import { useCreatePurchaseOrderMutation } from '../purchaseOrdersApi';
 import { optionalNumber } from '../../../../utils/yupHelpers';
+import { usePermission } from '../../../../hooks/usePermission';
 
 const schema = yup.object({
   prnId: yup.string().required('Requisition is required'),
@@ -31,6 +33,8 @@ const schema = yup.object({
 export default function PurchaseOrderFormDialog({ open, onClose }) {
   const { data: requisitions = [] } = useOpenRequisitionsQuery();
   const { data: vendors = [] } = useAllVendorsQuery();
+  const canCreateVendor = usePermission('master:create');
+  const [addingVendor, setAddingVendor] = useState(false);
 
   const methods = useForm({
     resolver: yupResolver(schema),
@@ -85,7 +89,13 @@ export default function PurchaseOrderFormDialog({ open, onClose }) {
                   <FormSelect name="prnId" label="Purchase Requisition" options={prnOptions} autoFocus />
                 </Grid>
                 <Grid item xs={12} sm={6}>
-                  <FormAutocomplete name="vendorId" label="Vendor" options={vendorOptions} />
+                  <FormAutocomplete
+                    name="vendorId"
+                    label="Vendor"
+                    options={vendorOptions}
+                    onAddNew={canCreateVendor ? () => setAddingVendor(true) : undefined}
+                    addNewLabel="+ Add New Vendor"
+                  />
                 </Grid>
               </Grid>
 
@@ -132,6 +142,11 @@ export default function PurchaseOrderFormDialog({ open, onClose }) {
           </DialogActions>
         </Stack>
       </FormProvider>
+      <VendorFormDialog
+        open={addingVendor}
+        onClose={() => setAddingVendor(false)}
+        onCreated={(createdVendor) => methods.setValue('vendorId', createdVendor._id, { shouldValidate: true, shouldDirty: true })}
+      />
     </Dialog>
   );
 }

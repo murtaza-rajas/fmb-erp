@@ -36,6 +36,11 @@ const grnSchema = new Schema({
   qualityCheckStatus: { type: String, enum: Object.values(GRN_QUALITY_STATUS), default: GRN_QUALITY_STATUS.PENDING },
   receivedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   isPartial: { type: Boolean, default: false },
+  // Cost of transport/delivery the vehicle/driver charges on arrival — a
+  // separate cost from the vendor's goods, not part of the PO/invoice 3-way
+  // match or vendor payment (per client confirmation), so it's tracked here
+  // only, purely for cost-recording purposes.
+  cartingCharges: { type: Number, min: 0, default: 0 },
   attachments: { type: [attachmentSchema], default: [] },
 });
 

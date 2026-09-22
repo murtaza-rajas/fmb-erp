@@ -29,6 +29,17 @@ function listLedger({ itemId, storeId, from, to, page, limit }) {
   return stockLedgerRepository.findPaginated({ itemId, storeId, from, to, page, limit });
 }
 
+// Current stock per item, across all stores — backs the Items List's stock column.
+function getStockMap() {
+  return stockLedgerRepository.sumQuantityByItem();
+}
+
+// Current stock per item, scoped to one store — backs the item picker on the
+// Purchase Requisition form (a PRN's items are drawn from that store's stock).
+function getStockMapForStore(storeId) {
+  return stockLedgerRepository.sumQuantityByStore(storeId);
+}
+
 // Reorder alerts are checked at the whole-organization level (total quantity
 // across all stores vs. the item's reorderLevel) — the SOP defines reorder
 // level as an item-master attribute, not a per-store one.
@@ -43,4 +54,4 @@ async function getReorderAlerts() {
     .filter(({ item, currentQuantity }) => currentQuantity <= item.reorderLevel);
 }
 
-module.exports = { appendEntry, getBalance, getTotalBalance, listLedger, getReorderAlerts };
+module.exports = { appendEntry, getBalance, getTotalBalance, listLedger, getReorderAlerts, getStockMap, getStockMapForStore };

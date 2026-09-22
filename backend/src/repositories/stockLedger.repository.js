@@ -43,6 +43,19 @@ class StockLedgerRepository {
     ]);
     return rows[0]?.total || 0;
   }
+
+  // Total quantity per item, scoped to one store — used to show current
+  // stock alongside each item when picking items for a store-specific
+  // requisition (a PRN's items are drawn from that store's stock).
+  async sumQuantityByStore(storeId) {
+    const rows = await StockLedger.aggregate([
+      { $match: { storeId: new mongoose.Types.ObjectId(storeId) } },
+      { $group: { _id: '$itemId', total: { $sum: '$quantity' } } },
+    ]);
+    const map = new Map();
+    for (const row of rows) map.set(row._id.toString(), row.total);
+    return map;
+  }
 }
 
 module.exports = new StockLedgerRepository();

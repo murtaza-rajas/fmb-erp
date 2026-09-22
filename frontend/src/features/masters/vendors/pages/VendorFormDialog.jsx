@@ -25,7 +25,7 @@ const schema = yup.object({
   fssaiCertificateFileKey: yup.string().nullable(),
 });
 
-export default function VendorFormDialog({ open, onClose, vendor }) {
+export default function VendorFormDialog({ open, onClose, vendor, onCreated }) {
   const isEdit = Boolean(vendor);
   const { data: paymentTermsData } = usePaymentTermsQuery({ limit: 100 });
   const { data: items = [] } = useAllItemsQuery();
@@ -90,8 +90,9 @@ export default function VendorFormDialog({ open, onClose, vendor }) {
         await updateVendor({ id: vendor._id, ...payload });
         enqueueSnackbar('Vendor updated', { variant: 'success' });
       } else {
-        await createVendor(payload);
+        const created = await createVendor(payload);
         enqueueSnackbar('Vendor created', { variant: 'success' });
+        onCreated?.(created);
       }
       onClose();
     } catch {

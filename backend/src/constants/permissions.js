@@ -50,6 +50,7 @@ const PERMISSIONS = Object.freeze({
 
   INVOICE_CREATE: 'invoice:create',
   INVOICE_READ: 'invoice:read',
+  INVOICE_UPDATE: 'invoice:update',
   INVOICE_MATCH: 'invoice:match',
   INVOICE_HOLD: 'invoice:hold',
   INVOICE_RELEASE: 'invoice:release',
@@ -62,6 +63,17 @@ const PERMISSIONS = Object.freeze({
 
   PAYMENT_CREATE: 'payment:create',
   PAYMENT_READ: 'payment:read',
+
+  // HR/Administration expenses (salary, wages, rent, utilities...) — a
+  // standalone module, deliberately independent of the vendor procurement
+  // pipeline and its "single payment-approval gate" (PaymentVoucher.approvalStatus).
+  // expense:approve is an ordinary permission, NOT added to
+  // PAYMENT_APPROVAL_GATED_PERMISSIONS below — that gate is reserved for the
+  // one mechanism the SOP actually protects.
+  EXPENSE_CREATE: 'expense:create',
+  EXPENSE_READ: 'expense:read',
+  EXPENSE_APPROVE: 'expense:approve',
+  EXPENSE_REJECT: 'expense:reject',
 
   VENDOR_LEDGER_READ: 'vendor_ledger:read',
 

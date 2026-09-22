@@ -13,6 +13,15 @@ const { generateDocumentNumber } = require('../helpers/numberGenerator');
 const { APPROVAL_STATUS, MATCH_STATUS, HOLD_STATUS, PO_STATUS, NOTE_STATUS } = require('../constants/enums');
 const { STAFF_TYPES, ROLES } = require('../constants/roles');
 
+// An invoice's items each carry their own poId — a consolidated invoice can
+// span several POs, so anything that walks "the invoice's PO" must dedupe
+// across items rather than assume a single value.
+function uniqueIds(ids) {
+  const seen = new Map();
+  for (const id of ids) seen.set(id.toString(), id);
+  return [...seen.values()];
+}
+
 // Notification failures must never block the underlying financial action —
 // dispatch is fire-and-forget from the caller's perspective.
 async function notifyApprovers(voucher) {
@@ -53,6 +62,9 @@ async function createVoucher(payload, actorId) {
 
   const alreadyVouchered = await paymentVoucherRepository.sumApprovedForInvoice(payload.invoiceId);
   const remaining = invoice.totalAmount - alreadyVouchered;
+  if (remaining <= 0) {
+    throw ApiError.conflict('This invoice has no remaining balance — a payment voucher has already been raised for its full amount');
+  }
   const amount = payload.amount ?? remaining;
 
   if (amount > remaining) {
@@ -70,15 +82,41 @@ async function createVoucher(payload, actorId) {
     updatedBy: actorId,
   });
 
-  const po = await purchaseOrderRepository.findById(invoice.poId);
-  if (po && po.status === PO_STATUS.INVOICED) {
-    await purchaseOrderRepository.updateById(po._id, { status: PO_STATUS.PAYMENT_PENDING, updatedBy: actorId });
-    await poStatusHistoryRepository.record({ poId: po._id, fromStatus: PO_STATUS.INVOICED, toStatus: PO_STATUS.PAYMENT_PENDING, changedBy: actorId, remarks: `Payment voucher ${voucherNumber} raised` });
+  // A consolidated invoice's items can reference several POs — advance every
+  // one of them that's still sitting at "invoiced".
+  const poIds = uniqueIds(invoice.items.map((line) => line.poId));
+  for (const poId of poIds) {
+    const po = await purchaseOrderRepository.findById(poId);
+    if (po && po.status === PO_STATUS.INVOICED) {
+      await purchaseOrderRepository.updateById(po._id, { status: PO_STATUS.PAYMENT_PENDING, updatedBy: actorId });
+      await poStatusHistoryRepository.record({ poId: po._id, fromStatus: PO_STATUS.INVOICED, toStatus: PO_STATUS.PAYMENT_PENDING, changedBy: actorId, remarks: `Payment voucher ${voucherNumber} raised` });
+    }
   }
 
   await auditLogService.record({ userId: actorId, action: 'create', module: 'payment_voucher', entityType: 'PaymentVoucher', entityId: voucher._id, after: voucher.toObject() });
   await notifyApprovers(voucher);
   return voucher;
+}
+
+// Invoices a voucher can actually be raised against: matched (or overridden),
+// not on hold, and with a remaining unvouchered balance above zero — an
+// invoice already fully covered by prior (pending/approved) vouchers must
+// disappear from this picker, or the "New Voucher" dropdown fills up with
+// invoices that are already done (see createVoucher's own remaining-balance
+// guard, which this mirrors).
+async function getInvoicesAvailableForVoucher() {
+  const invoices = await vendorInvoiceRepository.model
+    .find({ isDeleted: false, holdStatus: { $ne: HOLD_STATUS.ON_HOLD }, matchStatus: { $in: [MATCH_STATUS.MATCHED, MATCH_STATUS.OVERRIDDEN] } })
+    .populate('vendorId');
+
+  const vouchered = await paymentVoucherRepository.sumApprovedForInvoices(invoices.map((inv) => inv._id));
+
+  return invoices
+    .map((invoice) => {
+      const remainingAmount = invoice.totalAmount - (vouchered.get(invoice._id.toString()) || 0);
+      return { ...invoice.toObject(), remainingAmount };
+    })
+    .filter((invoice) => invoice.remainingAmount > 0);
 }
 
 function listVouchers({ page, limit, sort, filter }) {
@@ -142,8 +180,10 @@ async function approveVoucher(id, actor, waivedDebitNoteIds = []) {
     if (debitNotesToWaive.length !== waivedDebitNoteIds.length) {
       throw ApiError.badRequest('One or more debit notes to waive could not be found');
     }
+    const invoicePoGrnPairs = invoice.items.map((line) => `${line.poId}:${line.grnId}`);
     for (const dn of debitNotesToWaive) {
-      if (!dn.poId?.equals(invoice.poId) || !dn.grnId?.equals(invoice.grnId)) {
+      const belongsToInvoice = dn.poId && dn.grnId && invoicePoGrnPairs.includes(`${dn.poId}:${dn.grnId}`);
+      if (!belongsToInvoice) {
         throw ApiError.badRequest(`Debit Note ${dn.dnNumber} is not linked to this voucher's PO/GRN`);
       }
     }
@@ -194,10 +234,13 @@ async function rejectVoucher(id, reason, actorId) {
   });
 
   const invoice = await vendorInvoiceRepository.findById(voucher.invoiceId);
-  const po = invoice && (await purchaseOrderRepository.findById(invoice.poId));
-  if (po && po.status === PO_STATUS.PAYMENT_PENDING) {
-    await purchaseOrderRepository.updateById(po._id, { status: PO_STATUS.INVOICED, updatedBy: actorId });
-    await poStatusHistoryRepository.record({ poId: po._id, fromStatus: PO_STATUS.PAYMENT_PENDING, toStatus: PO_STATUS.INVOICED, changedBy: actorId, remarks: `Payment voucher ${voucher.voucherNumber} rejected: ${reason}` });
+  const poIds = invoice ? uniqueIds(invoice.items.map((line) => line.poId)) : [];
+  for (const poId of poIds) {
+    const po = await purchaseOrderRepository.findById(poId);
+    if (po && po.status === PO_STATUS.PAYMENT_PENDING) {
+      await purchaseOrderRepository.updateById(po._id, { status: PO_STATUS.INVOICED, updatedBy: actorId });
+      await poStatusHistoryRepository.record({ poId: po._id, fromStatus: PO_STATUS.PAYMENT_PENDING, toStatus: PO_STATUS.INVOICED, changedBy: actorId, remarks: `Payment voucher ${voucher.voucherNumber} rejected: ${reason}` });
+    }
   }
 
   await auditLogService.record({ userId: actorId, action: 'reject', module: 'payment_voucher', entityType: 'PaymentVoucher', entityId: id, before: { approvalStatus: APPROVAL_STATUS.PENDING }, after: { approvalStatus: APPROVAL_STATUS.REJECTED, rejectionReason: reason } });
@@ -205,4 +248,4 @@ async function rejectVoucher(id, reason, actorId) {
   return updated;
 }
 
-module.exports = { createVoucher, listVouchers, getVoucherById, approveVoucher, rejectVoucher };
+module.exports = { createVoucher, listVouchers, getVoucherById, approveVoucher, rejectVoucher, getInvoicesAvailableForVoucher };

@@ -46,9 +46,23 @@ function useInvalidateItems() {
 
 export function useCreateItemMutation() {
   const invalidate = useInvalidateItems();
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body) => axiosClient.post('/masters/items', body).then((r) => r.data.data),
-    onSuccess: invalidate,
+    onSuccess: (created) => {
+      // Append directly into every cached useAllItemsQuery() list (used by
+      // item pickers) so a newly created item shows up immediately without
+      // waiting on a refetch — an in-flight refetch keeps serving the old
+      // list until it resolves, which briefly hid the item that was just
+      // created from other pickers open on the same page.
+      queryClient.getQueryCache().findAll({ queryKey: ['items'] }).forEach((query) => {
+        const params = query.queryKey[1];
+        if (params?.all && Array.isArray(query.state.data)) {
+          queryClient.setQueryData(query.queryKey, (old) => [...old, created]);
+        }
+      });
+      invalidate();
+    },
   });
 }
 

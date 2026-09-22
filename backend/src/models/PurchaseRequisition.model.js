@@ -16,6 +16,9 @@ const purchaseRequisitionSchema = new Schema({
   prnNumber: { type: String, required: true, unique: true },
   storeId: { type: Schema.Types.ObjectId, ref: 'Store', required: true, index: true },
   requestedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  // Defaults to submission time, but can be set to a past date to record a
+  // requisition that was actually raised earlier (paper-based catch-up entry).
+  requisitionDate: { type: Date, default: Date.now },
   items: {
     type: [prnItemSchema],
     required: true,

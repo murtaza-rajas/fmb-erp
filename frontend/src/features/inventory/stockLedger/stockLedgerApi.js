@@ -21,6 +21,16 @@ export function useStockBalanceQuery(itemId, storeId) {
   });
 }
 
+// Current stock per item at one store — used to show stock-on-hand beside
+// each item when picking items for a store-specific requisition.
+export function useStoreStockQuery(storeId) {
+  return useQuery({
+    queryKey: queryKeys.storeStock(storeId),
+    queryFn: async () => (await axiosClient.get('/inventory/store-stock', { params: { storeId } })).data.data,
+    enabled: Boolean(storeId),
+  });
+}
+
 export function useReorderAlertsQuery() {
   return useQuery({
     queryKey: queryKeys.reorderAlerts,

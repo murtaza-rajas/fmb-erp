@@ -49,7 +49,9 @@
       "Bash(mongosh mongodb://localhost:27017/fmb_erp_dev --quiet --eval ' *)",
       "Bash(curl -s -o /dev/null -w \"backend:%{http_code}\\\\n\" http://localhost:5000/api/v1/auth/me)",
       "Bash(curl -s -o /dev/null -w \"frontend:%{http_code}\\\\n\" http://localhost:5173)",
-      "Bash(node verify_pr_item.js)"
+      "Bash(node verify_pr_item.js)",
+      "Bash(docker exec docker-mongo-1 mongosh --quiet mongodb://localhost:27017/fmb_erp?replicaSet=rs0 --eval ' *)",
+      "Bash(docker exec *)"
     ],
     "additionalDirectories": [
       "/var/www/html/fmb-erp/backend/src/validators",

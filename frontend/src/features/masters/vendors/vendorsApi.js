@@ -35,9 +35,21 @@ function useInvalidateVendors() {
 
 export function useCreateVendorMutation() {
   const invalidate = useInvalidateVendors();
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body) => axiosClient.post('/masters/vendors', body).then((r) => r.data.data),
-    onSuccess: invalidate,
+    onSuccess: (created) => {
+      // Append directly into every cached useAllVendorsQuery() list (used by
+      // vendor pickers) so a newly created vendor shows up immediately,
+      // without waiting on a refetch — mirrors the same fix for items.
+      queryClient.getQueryCache().findAll({ queryKey: ['vendors'] }).forEach((query) => {
+        const params = query.queryKey[1];
+        if (params?.limit === 100 && Array.isArray(query.state.data)) {
+          queryClient.setQueryData(query.queryKey, (old) => [...old, created]);
+        }
+      });
+      invalidate();
+    },
   });
 }
 

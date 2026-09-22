@@ -1,5 +1,6 @@
 const asyncHandler = require('../utils/asyncHandler');
 const ApiResponse = require('../utils/ApiResponse');
+const ApiError = require('../utils/ApiError');
 const stockLedgerService = require('../services/stockLedger.service');
 
 const list = asyncHandler(async (req, res) => {
@@ -20,4 +21,11 @@ const reorderAlerts = asyncHandler(async (req, res) => {
   ApiResponse.send(res, { data: alerts });
 });
 
-module.exports = { list, balance, reorderAlerts };
+const storeStock = asyncHandler(async (req, res) => {
+  const { storeId } = req.query;
+  if (!storeId) throw ApiError.badRequest('storeId is required');
+  const map = await stockLedgerService.getStockMapForStore(storeId);
+  ApiResponse.send(res, { data: Object.fromEntries(map) });
+});
+
+module.exports = { list, balance, reorderAlerts, storeStock };

@@ -34,8 +34,8 @@ async function createItem(payload, actorId) {
   return item;
 }
 
-function listItems({ page, limit, sort, search, filter }) {
-  return itemRepository.findPaginated({
+async function listItems({ page, limit, sort, search, filter }) {
+  const result = await itemRepository.findPaginated({
     page,
     limit,
     sort,
@@ -44,6 +44,15 @@ function listItems({ page, limit, sort, search, filter }) {
     searchFields: ['name', 'sku'],
     populate: 'categoryId unitId taxId',
   });
+
+  const stockByItem = await stockLedgerService.getStockMap();
+  const items = result.items.map((item) => {
+    const obj = item.toObject();
+    obj.currentStock = stockByItem.get(item._id.toString()) || 0;
+    return obj;
+  });
+
+  return { ...result, items };
 }
 
 async function getItemById(id) {

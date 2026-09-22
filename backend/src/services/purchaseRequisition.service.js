@@ -1,4 +1,5 @@
 const prnRepository = require('../repositories/purchaseRequisition.repository');
+const itemRepository = require('../repositories/item.repository');
 const ApiError = require('../utils/ApiError');
 const auditLogService = require('./auditLog.service');
 const { generateDocumentNumber } = require('../helpers/numberGenerator');
@@ -11,6 +12,7 @@ async function createRequisition(payload, actorId) {
     prnNumber,
     storeId: payload.storeId,
     requestedBy: actorId,
+    requisitionDate: payload.requisitionDate || new Date(),
     items: payload.items,
     isEmergency: Boolean(payload.isEmergency),
     status: PRN_STATUS.SUBMITTED,
@@ -22,14 +24,33 @@ async function createRequisition(payload, actorId) {
   return prn;
 }
 
-function listRequisitions({ page, limit, sort, search, filter }) {
+// Search spans the PRN's own number plus the items on it — items.itemId is a
+// reference, not a string, so a plain regex searchFields entry can't reach
+// it; resolve matching Item ids first (same resolve-to-ids pattern used for
+// invoice/GRN search) and fold them into the $or by hand.
+async function listRequisitions({ page, limit, sort, search, filter = {} }) {
+  const { from, to, ...rest } = filter;
+  const dateFilter = {};
+  if (from || to) {
+    dateFilter.requisitionDate = {};
+    if (from) dateFilter.requisitionDate.$gte = new Date(from);
+    if (to) dateFilter.requisitionDate.$lte = new Date(to);
+  }
+
+  const combinedFilter = { ...rest, ...dateFilter };
+  if (search) {
+    const matchingItems = await itemRepository.model.find({ name: { $regex: search, $options: 'i' } }, { _id: 1 });
+    combinedFilter.$or = [
+      { prnNumber: { $regex: search, $options: 'i' } },
+      { 'items.itemId': { $in: matchingItems.map((i) => i._id) } },
+    ];
+  }
+
   return prnRepository.findPaginated({
     page,
     limit,
     sort,
-    search,
-    searchFields: ['prnNumber'],
-    filter,
+    filter: combinedFilter,
     populate: 'storeId requestedBy items.itemId',
   });
 }
@@ -53,6 +74,8 @@ async function updateRequisition(id, payload, actorId) {
   }
 
   const updated = await prnRepository.updateById(id, {
+    storeId: payload.storeId ?? before.storeId,
+    requisitionDate: payload.requisitionDate ?? before.requisitionDate,
     items: payload.items ?? before.items,
     isEmergency: payload.isEmergency ?? before.isEmergency,
     updatedBy: actorId,

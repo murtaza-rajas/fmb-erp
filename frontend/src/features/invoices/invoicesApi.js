@@ -46,6 +46,14 @@ export function useCreateInvoiceMutation() {
   });
 }
 
+export function useUpdateInvoiceMutation() {
+  const invalidate = useInvalidateInvoices();
+  return useMutation({
+    mutationFn: ({ id, ...body }) => axiosClient.patch(`/invoices/${id}`, body).then((r) => r.data.data),
+    onSuccess: invalidate,
+  });
+}
+
 export function useMatchInvoiceMutation(id) {
   const invalidate = useInvalidateInvoices(id);
   return useMutation({

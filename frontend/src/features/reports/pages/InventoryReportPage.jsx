@@ -1,4 +1,5 @@
-import { Box, Card, CardContent, Stack, Chip } from '@mui/material';
+import { useState } from 'react';
+import { Box, Card, CardContent, Stack, Chip, TextField } from '@mui/material';
 import PageHeader from '../../../components/PageHeader';
 import { useInventoryReportQuery } from '../reportsApi';
 import ReportTable from '../components/ReportTable';
@@ -8,6 +9,8 @@ const currency = (n) => new Intl.NumberFormat('en-IN', { style: 'currency', curr
 
 export default function InventoryReportPage() {
   const { data: rows, isLoading, isError, error, refetch } = useInventoryReportQuery();
+  const [search, setSearch] = useState('');
+  const filteredRows = (rows || []).filter((r) => r.name?.toLowerCase().includes(search.trim().toLowerCase()));
 
   const columns = [
     { key: 'sku', header: 'SKU' },
@@ -35,13 +38,21 @@ export default function InventoryReportPage() {
       <PageHeader title="Inventory Report" subtitle="Current stock levels and valuation" />
       <Card variant="outlined" sx={{ mb: 2 }}>
         <CardContent>
-          <Stack direction="row" justifyContent="flex-end">
+          <Stack direction="row" spacing={2} alignItems="center">
+            <TextField
+              label="Search by item name"
+              size="small"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              sx={{ minWidth: 240 }}
+            />
+            <Box sx={{ flexGrow: 1 }} />
             <ExportButtons endpoint="/reports/inventory" params={{}} filename="inventory-report" />
           </Stack>
         </CardContent>
       </Card>
 
-      <ReportTable columns={columns} rows={rows} isLoading={isLoading} isError={isError} error={error} onRetry={refetch} />
+      <ReportTable columns={columns} rows={filteredRows} isLoading={isLoading} isError={isError} error={error} onRetry={refetch} />
     </Box>
   );
 }

@@ -9,6 +9,7 @@ import FormSelect from '../../../../components/form/FormSelect';
 import { useCategoriesQuery } from '../../categories/categoriesApi';
 import { useUnitsQuery } from '../../units/unitsApi';
 import { useTaxesQuery } from '../../taxes/taxesApi';
+import { optionalNumber } from '../../../../utils/yupHelpers';
 import { useCreateItemMutation, useUpdateItemMutation } from '../itemsApi';
 
 const schema = yup.object({
@@ -16,12 +17,12 @@ const schema = yup.object({
   sku: yup.string().nullable(),
   categoryId: yup.string().required('Category is required'),
   unitId: yup.string().required('Unit is required'),
-  reorderLevel: yup.number().typeError('Must be a number').min(0, 'Cannot be negative').required('Reorder level is required'),
-  standardRate: yup.number().typeError('Must be a number').min(0, 'Cannot be negative').required('Standard rate is required'),
+  reorderLevel: optionalNumber().min(0, 'Cannot be negative'),
+  standardRate: optionalNumber().min(0, 'Cannot be negative'),
   taxId: yup.string().nullable(),
 });
 
-export default function ItemFormDialog({ open, onClose, item }) {
+export default function ItemFormDialog({ open, onClose, item, onCreated }) {
   const isEdit = Boolean(item);
   const { data: categoriesData } = useCategoriesQuery({ limit: 100 });
   const { data: unitsData } = useUnitsQuery({ limit: 100 });
@@ -62,8 +63,9 @@ export default function ItemFormDialog({ open, onClose, item }) {
         await updateItem({ id: item._id, ...payload });
         enqueueSnackbar('Item updated', { variant: 'success' });
       } else {
-        await createItem(payload);
+        const created = await createItem(payload);
         enqueueSnackbar('Item created', { variant: 'success' });
+        onCreated?.(created);
       }
       onClose();
     } catch {

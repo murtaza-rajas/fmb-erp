@@ -66,12 +66,13 @@ export const navConfig = [
   {
     label: 'Finance',
     icon: AccountBalanceIcon,
-    permission: ['payment_voucher:read', 'payment:read'],
+    permission: ['payment_voucher:read', 'payment:read', 'expense:read'],
     children: [
       { label: 'Payment Vouchers', path: '/finance/payment-vouchers', permission: 'payment_voucher:read' },
       { label: 'Payments', path: '/finance/payments', permission: 'payment:read' },
       { label: 'Advance Payments', path: '/finance/advance-payments', permission: 'payment:read' },
       { label: 'Vendor Ledger', path: '/finance/vendor-ledger', permission: 'vendor_ledger:read' },
+      { label: 'Expenses', path: '/finance/expenses', permission: 'expense:read' },
     ],
   },
   {

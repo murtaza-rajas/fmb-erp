@@ -164,3 +164,45 @@ describe('Material Issue Voucher', () => {
     expect(res.body.data[0].costPerThaali).toBeNull();
   });
 });
+
+describe('Material Issue Voucher list search — by voucherNumber or item name', () => {
+  test('search matches on the voucher number or an item on it', async () => {
+    await request(app)
+      .post('/api/v1/inventory/adjustments')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ storeId, itemId, quantity: 100, reason: 'Test stock-in' });
+
+    const createRes = await request(app)
+      .post('/api/v1/inventory/material-issues')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ storeId, category: 'fmb', thaaliCount: 40, items: [{ itemId, quantity: 10 }] });
+    const voucherNumber = createRes.body.data.voucherNumber;
+
+    const byVoucherNumber = await request(app).get(`/api/v1/inventory/material-issues?search=${voucherNumber}`).set('Authorization', `Bearer ${token}`);
+    expect(byVoucherNumber.body.data).toHaveLength(1);
+
+    const byItemName = await request(app).get('/api/v1/inventory/material-issues?search=Item').set('Authorization', `Bearer ${token}`);
+    expect(byItemName.body.data).toHaveLength(1);
+
+    const noMatch = await request(app).get('/api/v1/inventory/material-issues?search=NOTHING-MATCHES-THIS').set('Authorization', `Bearer ${token}`);
+    expect(noMatch.body.data).toHaveLength(0);
+  });
+});
+
+describe('Stock Adjustment list search — by reason or item name', () => {
+  test('search matches on the adjustment reason or the item name', async () => {
+    await request(app)
+      .post('/api/v1/inventory/adjustments')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ storeId, itemId, quantity: 10, reason: 'Cycle count correction' });
+
+    const byReason = await request(app).get('/api/v1/inventory/adjustments?search=Cycle').set('Authorization', `Bearer ${token}`);
+    expect(byReason.body.data).toHaveLength(1);
+
+    const byItemName = await request(app).get('/api/v1/inventory/adjustments?search=Item').set('Authorization', `Bearer ${token}`);
+    expect(byItemName.body.data).toHaveLength(1);
+
+    const noMatch = await request(app).get('/api/v1/inventory/adjustments?search=NOTHING-MATCHES-THIS').set('Authorization', `Bearer ${token}`);
+    expect(noMatch.body.data).toHaveLength(0);
+  });
+});

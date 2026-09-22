@@ -17,8 +17,9 @@ const discrepancySchema = new Schema(
 const invoiceMatchLogSchema = new Schema(
   {
     invoiceId: { type: Schema.Types.ObjectId, ref: 'VendorInvoice', required: true, index: true },
-    poId: { type: Schema.Types.ObjectId, ref: 'PurchaseOrder', required: true },
-    grnId: { type: Schema.Types.ObjectId, ref: 'Grn', required: true },
+    // Arrays since a consolidated invoice can span multiple (PO, GRN) pairs.
+    poIds: { type: [Schema.Types.ObjectId], ref: 'PurchaseOrder', required: true },
+    grnIds: { type: [Schema.Types.ObjectId], ref: 'Grn', required: true },
     discrepancies: { type: [discrepancySchema], default: [] },
     matchedBy: { type: Schema.Types.ObjectId, ref: 'User' },
     result: { type: String, enum: [MATCH_STATUS.MATCHED, MATCH_STATUS.MISMATCHED, MATCH_STATUS.OVERRIDDEN], required: true },

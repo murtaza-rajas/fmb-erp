@@ -14,7 +14,17 @@ function scheduleReorderAlertJob() {
       if (alerts.length === 0) return;
 
       const recipients = await userRepository.findActiveByRoleNames([ROLES.STORE, ROLES.PROCUREMENT_HEAD]);
-      const message = `${alerts.length} item(s) at or below reorder level: ${alerts.map((a) => a.item.name).join(', ')}`;
+      // Cap the listed items — with a large catalog, dozens/hundreds of items
+      // can fall below reorder level at once, and a notification listing all
+      // of them is unreadable regardless of formatting. The full list is
+      // always available at the linked Reorder Alerts page.
+      const MAX_LISTED_ITEMS = 15;
+      const lines = alerts.map((a) => `• ${a.item.name} (${a.currentQuantity}/${a.item.reorderLevel})`);
+      const message = [
+        `${alerts.length} item(s) at or below reorder level:`,
+        ...lines.slice(0, MAX_LISTED_ITEMS),
+        ...(lines.length > MAX_LISTED_ITEMS ? [`…and ${lines.length - MAX_LISTED_ITEMS} more — see Reorder Alerts for the full list.`] : []),
+      ].join('\n');
 
       await Promise.all(
         recipients.map((user) =>

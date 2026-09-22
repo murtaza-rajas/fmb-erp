@@ -81,14 +81,29 @@ async function createPurchaseOrder(payload, actorId) {
   }
 }
 
-function listPurchaseOrders({ page, limit, sort, search, filter }) {
+// Search spans the PO's own number, its vendor's name, and the items on
+// it — the latter two are references, not strings, so resolving matching
+// ids first (same pattern as invoice/GRN/PRN search) is required before they
+// can be folded into the $or.
+async function listPurchaseOrders({ page, limit, sort, search, filter }) {
+  const combinedFilter = { ...filter };
+  if (search) {
+    const [vendors, matchingItems] = await Promise.all([
+      vendorRepository.model.find({ name: { $regex: search, $options: 'i' } }, { _id: 1 }),
+      itemRepository.model.find({ name: { $regex: search, $options: 'i' } }, { _id: 1 }),
+    ]);
+    combinedFilter.$or = [
+      { poNumber: { $regex: search, $options: 'i' } },
+      { vendorId: { $in: vendors.map((v) => v._id) } },
+      { 'items.itemId': { $in: matchingItems.map((i) => i._id) } },
+    ];
+  }
+
   return purchaseOrderRepository.findPaginated({
     page,
     limit,
     sort,
-    search,
-    searchFields: ['poNumber'],
-    filter,
+    filter: combinedFilter,
     populate: 'vendorId prnId items.itemId',
   });
 }

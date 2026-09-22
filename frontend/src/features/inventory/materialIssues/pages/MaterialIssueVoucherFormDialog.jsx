@@ -1,7 +1,7 @@
-import { useForm, FormProvider, useFieldArray } from 'react-hook-form';
+import { useForm, FormProvider, useFieldArray, useFormContext, useWatch } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Stack, Alert, CircularProgress, Grid, IconButton } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Stack, Alert, CircularProgress, Grid, IconButton, InputAdornment } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import { useSnackbar } from 'notistack';
@@ -33,6 +33,35 @@ const schema = yup.object({
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
+// Shows the item's unit next to Quantity (e.g. "kg", "pcs") so it's clear
+// what's being deducted from stock — stock is always issued in the item's
+// one fixed unit (no unit-conversion concept exists in this app), so this is
+// purely a clarity display, not a conversion.
+function MaterialIssueItemRow({ index, itemOptions, unitByItemId, onRemove, disableRemove }) {
+  const { control } = useFormContext();
+  const itemId = useWatch({ control, name: `items.${index}.itemId` });
+  const unitSymbol = unitByItemId[itemId];
+
+  return (
+    <Grid container spacing={1.5} alignItems="center">
+      <Grid item xs={7}>
+        <FormAutocomplete name={`items.${index}.itemId`} label="Item" options={itemOptions} />
+      </Grid>
+      <Grid item xs={4}>
+        <FormTextField
+          name={`items.${index}.quantity`}
+          label="Quantity"
+          type="number"
+          InputProps={unitSymbol ? { endAdornment: <InputAdornment position="end">{unitSymbol}</InputAdornment> } : undefined}
+        />
+      </Grid>
+      <Grid item xs={1}>
+        <IconButton onClick={onRemove} disabled={disableRemove}><DeleteOutlineIcon fontSize="small" /></IconButton>
+      </Grid>
+    </Grid>
+  );
+}
+
 export default function MaterialIssueVoucherFormDialog({ open, onClose }) {
   const methods = useForm({
     resolver: yupResolver(schema),
@@ -55,7 +84,8 @@ export default function MaterialIssueVoucherFormDialog({ open, onClose }) {
     }
   };
 
-  const itemOptions = items.map((i) => ({ value: i._id, label: i.name }));
+  const itemOptions = items.map((i) => ({ value: i._id, label: `${i.name} — ${i.unitId?.symbol || 'no unit'}` }));
+  const unitByItemId = Object.fromEntries(items.map((i) => [i._id, i.unitId?.symbol]));
   const storeOptions = (storesData?.items || []).map((s) => ({ value: s._id, label: s.name }));
 
   return (
@@ -73,13 +103,14 @@ export default function MaterialIssueVoucherFormDialog({ open, onClose }) {
                 <Grid item xs={6}><FormTextField name="issueDate" label="Issue Date" type="date" InputLabelProps={{ shrink: true }} /></Grid>
               </Grid>
               {fields.map((field, index) => (
-                <Grid container spacing={1.5} key={field.id} alignItems="center">
-                  <Grid item xs={7}><FormAutocomplete name={`items.${index}.itemId`} label="Item" options={itemOptions} /></Grid>
-                  <Grid item xs={4}><FormTextField name={`items.${index}.quantity`} label="Quantity" type="number" /></Grid>
-                  <Grid item xs={1}>
-                    <IconButton onClick={() => remove(index)} disabled={fields.length === 1}><DeleteOutlineIcon fontSize="small" /></IconButton>
-                  </Grid>
-                </Grid>
+                <MaterialIssueItemRow
+                  key={field.id}
+                  index={index}
+                  itemOptions={itemOptions}
+                  unitByItemId={unitByItemId}
+                  onRemove={() => remove(index)}
+                  disableRemove={fields.length === 1}
+                />
               ))}
               <Button startIcon={<AddIcon />} onClick={() => append({ itemId: '', quantity: '' })} sx={{ alignSelf: 'flex-start' }}>Add Item</Button>
             </Stack>

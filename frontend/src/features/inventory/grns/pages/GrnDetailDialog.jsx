@@ -22,6 +22,10 @@ export default function GrnDetailDialog({ open, onClose, grn }) {
               <Typography variant="caption" color="text.secondary">Quality Check</Typography>
               <StatusBadge status={grn.qualityCheckStatus} />
             </Stack>
+            <Stack>
+              <Typography variant="caption" color="text.secondary">Carting Charges</Typography>
+              <Typography variant="body2">{grn.cartingCharges || 0}</Typography>
+            </Stack>
           </Stack>
 
           <Table size="small">

@@ -27,7 +27,7 @@ export default function NotificationsPage() {
   const columns = useMemo(
     () => [
       { header: 'Title', accessorKey: 'title' },
-      { header: 'Message', accessorKey: 'message' },
+      { header: 'Message', accessorKey: 'message', cell: (info) => <span style={{ whiteSpace: 'pre-line' }}>{info.getValue()}</span> },
       { header: 'Channel', accessorKey: 'channel', cell: (info) => <span style={{ textTransform: 'capitalize' }}>{info.getValue()?.replace('_', ' ')}</span> },
       {
         header: 'Status',

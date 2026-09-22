@@ -15,6 +15,7 @@ const router = Router();
 
 router.get('/stock-ledger', authorize(PERMISSIONS.STOCK_READ), queryParser, stockLedgerController.list);
 router.get('/stock-balance', authorize(PERMISSIONS.STOCK_READ), stockLedgerController.balance);
+router.get('/store-stock', authorize(PERMISSIONS.STOCK_READ), stockLedgerController.storeStock);
 router.get('/reorder-alerts', authorize(PERMISSIONS.STOCK_READ), stockLedgerController.reorderAlerts);
 
 router.get('/adjustments', authorize(PERMISSIONS.STOCK_READ), queryParser, stockAdjustmentController.list);

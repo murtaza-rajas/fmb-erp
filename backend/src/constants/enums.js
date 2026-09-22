@@ -111,6 +111,20 @@ const MATERIAL_ISSUE_CATEGORY = Object.freeze({
   EVENT: 'event',
 });
 
+// HR/Administration expenses — costs that never go through a Purchase Order
+// (no Vendor/PO/GRN/Invoice involved), e.g. weekly-paid labour/cooks, monthly
+// staff salary, rent, utilities. WAGES is kept distinct from SALARY since
+// FMB pays casual/weekly labour (cooks, helpers) separately from salaried staff.
+const EXPENSE_CATEGORY = Object.freeze({
+  SALARY: 'salary',
+  WAGES: 'wages',
+  RENT: 'rent',
+  UTILITIES: 'utilities',
+  OFFICE_SUPPLIES: 'office_supplies',
+  TRAVEL: 'travel',
+  OTHER: 'other',
+});
+
 module.exports = {
   PO_STATUS,
   PRN_STATUS,
@@ -128,4 +142,5 @@ module.exports = {
   NOTE_STATUS,
   REJECTION_REASON,
   MATERIAL_ISSUE_CATEGORY,
+  EXPENSE_CATEGORY,
 };

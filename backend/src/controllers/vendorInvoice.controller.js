@@ -8,13 +8,18 @@ const create = asyncHandler(async (req, res) => {
 });
 
 const list = asyncHandler(async (req, res) => {
-  const { page, limit, sort, filter } = req.query.parsed;
-  const { items, total } = await invoiceService.listInvoices({ page, limit, sort, filter });
+  const { page, limit, sort, search, filter } = req.query.parsed;
+  const { items, total } = await invoiceService.listInvoices({ page, limit, sort, search, filter });
   ApiResponse.send(res, { data: items, meta: { page, limit, total } });
 });
 
 const getById = asyncHandler(async (req, res) => {
   const invoice = await invoiceService.getInvoiceById(req.params.id);
+  ApiResponse.send(res, { data: invoice });
+});
+
+const update = asyncHandler(async (req, res) => {
+  const invoice = await invoiceService.updateInvoice(req.params.id, req.body, req.user._id);
   ApiResponse.send(res, { data: invoice });
 });
 
@@ -43,4 +48,4 @@ const matchHistory = asyncHandler(async (req, res) => {
   ApiResponse.send(res, { data: history });
 });
 
-module.exports = { create, list, getById, match, hold, release, overrideMatch, matchHistory };
+module.exports = { create, list, getById, update, match, hold, release, overrideMatch, matchHistory };

@@ -10,6 +10,7 @@ const create = [
   body('items.*.rejectedQty').optional({ values: 'falsy' }).isFloat({ min: 0 }),
   body('items.*.rejectionReason').optional({ values: 'falsy' }).isIn(Object.values(REJECTION_REASON)),
   body('items.*.remarks').optional({ values: 'falsy' }).isString(),
+  body('cartingCharges').optional({ values: 'falsy' }).isFloat({ min: 0 }).withMessage('cartingCharges must be a non-negative number'),
   body('attachments').optional({ values: 'falsy' }).isArray(),
   body('attachments.*.fileKey').optional({ values: 'falsy' }).isString(),
   body('attachments.*.contentType').optional({ values: 'falsy' }).isString(),

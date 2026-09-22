@@ -43,6 +43,7 @@ const PaymentVouchersListPage = lazy(() => import('../features/finance/paymentVo
 const PaymentsListPage = lazy(() => import('../features/finance/payments/pages/PaymentsListPage'));
 const AdvancePaymentsListPage = lazy(() => import('../features/finance/advancePayments/pages/AdvancePaymentsListPage'));
 const VendorLedgerPage = lazy(() => import('../features/finance/vendorLedger/pages/VendorLedgerPage'));
+const ExpensesListPage = lazy(() => import('../features/finance/expenses/pages/ExpensesListPage'));
 const NotificationsPage = lazy(() => import('../features/notifications/pages/NotificationsPage'));
 const PurchaseReportPage = lazy(() => import('../features/reports/pages/PurchaseReportPage'));
 const VendorReportPage = lazy(() => import('../features/reports/pages/VendorReportPage'));
@@ -116,6 +117,7 @@ export default function AppRoutes() {
             <Route path="/finance/payments" element={<PaymentsListPage />} />
             <Route path="/finance/advance-payments" element={<AdvancePaymentsListPage />} />
             <Route path="/finance/vendor-ledger" element={<VendorLedgerPage />} />
+            <Route path="/finance/expenses" element={<ExpensesListPage />} />
 
             <Route path="/notifications" element={<NotificationsPage />} />
 

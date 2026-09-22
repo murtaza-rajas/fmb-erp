@@ -5,8 +5,7 @@ import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Stack, Alert
 import { useSnackbar } from 'notistack';
 import FormSelect from '../../../../components/form/FormSelect';
 import FormTextField from '../../../../components/form/FormTextField';
-import { useInvoicesQuery } from '../../../invoices/invoicesApi';
-import { useCreatePaymentVoucherMutation } from '../paymentVouchersApi';
+import { useCreatePaymentVoucherMutation, useAvailableInvoicesForVoucherQuery } from '../paymentVouchersApi';
 import { optionalNumber } from '../../../../utils/yupHelpers';
 
 const PAYMENT_MODE_OPTIONS = [
@@ -25,12 +24,11 @@ const schema = yup.object({
 
 export default function PaymentVoucherFormDialog({ open, onClose }) {
   const methods = useForm({ resolver: yupResolver(schema), defaultValues: { invoiceId: '', amount: '', paymentMode: '' } });
-  // Only matched (or manually overridden) and un-held invoices can actually
-  // have a voucher raised — the backend enforces this too, but filtering
-  // here avoids a predictable 409. Filtered client-side since matchStatus
-  // can be either of two values and the list endpoint's filter only does
-  // exact-value equality.
-  const { data: invoicesData } = useInvoicesQuery({ limit: 100 });
+  // Only matched (or manually overridden), un-held invoices with a remaining
+  // unvouchered balance can actually have a voucher raised — this endpoint
+  // already excludes invoices fully covered by a prior pending/approved
+  // voucher, so it never lists something there's nothing left to pay.
+  const { data: invoices = [] } = useAvailableInvoicesForVoucherQuery();
   const { mutateAsync, isPending, error } = useCreatePaymentVoucherMutation();
   const { enqueueSnackbar } = useSnackbar();
 
@@ -46,9 +44,10 @@ export default function PaymentVoucherFormDialog({ open, onClose }) {
     }
   };
 
-  const invoiceOptions = (invoicesData?.items || [])
-    .filter((inv) => inv.holdStatus !== 'on_hold' && ['matched', 'overridden'].includes(inv.matchStatus))
-    .map((inv) => ({ value: inv._id, label: `${inv.invoiceNumber} — ${inv.vendorId?.name || ''} (${inv.totalAmount})` }));
+  const invoiceOptions = invoices.map((inv) => ({
+    value: inv._id,
+    label: `${inv.invoiceNumber} — ${inv.vendorId?.name || ''} (remaining ${inv.remainingAmount} of ${inv.totalAmount})`,
+  }));
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>

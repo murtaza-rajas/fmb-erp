@@ -13,6 +13,14 @@ export function useMaterialIssueVouchersQuery(params = {}) {
   });
 }
 
+export function useMaterialIssueVoucherQuery(id) {
+  return useQuery({
+    queryKey: queryKeys.materialIssueVoucher(id),
+    queryFn: async () => (await axiosClient.get(`/inventory/material-issues/${id}`)).data.data,
+    enabled: Boolean(id),
+  });
+}
+
 export function useCreateMaterialIssueVoucherMutation() {
   const queryClient = useQueryClient();
   return useMutation({

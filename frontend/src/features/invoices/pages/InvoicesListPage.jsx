@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, IconButton, Tooltip, Stack } from '@mui/material';
+import { Button, IconButton, Tooltip, Stack, Typography } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import PageHeader from '../../../components/PageHeader';
 import DataTable from '../../../components/DataTable';
 import StatusBadge from '../../../components/StatusBadge';
@@ -17,14 +18,30 @@ export default function InvoicesListPage() {
   const { queryParams, tableProps } = useTableState();
   const { data, isLoading, isError, error, refetch } = useInvoicesQuery(queryParams);
   const canCreate = usePermission('invoice:create');
+  const canUpdate = usePermission('invoice:update');
   const navigate = useNavigate();
-  const [creating, setCreating] = useState(false);
+  const [formTarget, setFormTarget] = useState(undefined);
 
   const columns = useMemo(
     () => [
       { header: 'Invoice #', accessorKey: 'invoiceNumber' },
       { header: 'Vendor', accessorKey: 'vendorId', cell: (info) => info.getValue()?.name || '—' },
-      { header: 'PO', accessorKey: 'poId', cell: (info) => info.getValue()?.poNumber || '—' },
+      {
+        header: 'PO',
+        accessorKey: 'items',
+        cell: (info) => {
+          const items = info.getValue() || [];
+          const poNumbers = [...new Set(items.map((line) => line.poId?.poNumber).filter(Boolean))];
+          if (poNumbers.length <= 1) return poNumbers[0] || '—';
+          return (
+            <Tooltip title={poNumbers.join(', ')}>
+              <Typography variant="body2" component="span" sx={{ cursor: 'default' }}>
+                {poNumbers[0]} +{poNumbers.length - 1} more
+              </Typography>
+            </Tooltip>
+          );
+        },
+      },
       { header: 'Total Amount', accessorKey: 'totalAmount', cell: (info) => currency(info.getValue()) },
       {
         header: 'Match / Hold',
@@ -40,15 +57,24 @@ export default function InvoicesListPage() {
         header: '',
         id: 'actions',
         cell: (info) => (
-          <Tooltip title="View details">
-            <IconButton size="small" onClick={() => navigate(`/invoices/${info.row.original._id}`)}>
-              <VisibilityOutlinedIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
+          <>
+            <Tooltip title="View details">
+              <IconButton size="small" onClick={() => navigate(`/invoices/${info.row.original._id}`)}>
+                <VisibilityOutlinedIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            {canUpdate && (info.row.original.matchStatus === 'pending' || info.row.original.totalAmount === 0) && (
+              <Tooltip title="Edit">
+                <IconButton size="small" onClick={() => setFormTarget(info.row.original)}>
+                  <EditOutlinedIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
+          </>
         ),
       },
     ],
-    [navigate]
+    [navigate, canUpdate]
   );
 
   return (
@@ -56,7 +82,7 @@ export default function InvoicesListPage() {
       <PageHeader
         title="Vendor Invoices"
         subtitle="Three-way match against PO + GRN"
-        actions={canCreate && <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreating(true)}>New Invoice</Button>}
+        actions={canCreate && <Button variant="contained" startIcon={<AddIcon />} onClick={() => setFormTarget(null)}>New Invoice</Button>}
       />
 
       <DataTable
@@ -72,7 +98,7 @@ export default function InvoicesListPage() {
         {...tableProps}
       />
 
-      <InvoiceFormDialog open={creating} onClose={() => setCreating(false)} />
+      <InvoiceFormDialog open={formTarget !== undefined} onClose={() => setFormTarget(undefined)} invoice={formTarget} />
     </>
   );
 }

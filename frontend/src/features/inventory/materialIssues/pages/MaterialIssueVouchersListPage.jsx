@@ -1,12 +1,14 @@
 import { useMemo, useState } from 'react';
-import { Button } from '@mui/material';
+import { Button, IconButton, Tooltip } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import PageHeader from '../../../../components/PageHeader';
 import DataTable from '../../../../components/DataTable';
 import { usePermission } from '../../../../hooks/usePermission';
 import { useTableState } from '../../../../hooks/useTableState';
 import { useMaterialIssueVouchersQuery } from '../materialIssueVouchersApi';
 import MaterialIssueVoucherFormDialog from './MaterialIssueVoucherFormDialog';
+import MaterialIssueVoucherDetailDialog from './MaterialIssueVoucherDetailDialog';
 
 const currency = (n) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n || 0);
 
@@ -17,6 +19,7 @@ export default function MaterialIssueVouchersListPage() {
   const { data, isLoading, isError, error, refetch } = useMaterialIssueVouchersQuery(queryParams);
   const canCreate = usePermission('material_issue:create');
   const [creating, setCreating] = useState(false);
+  const [viewTarget, setViewTarget] = useState(null);
 
   const columns = useMemo(
     () => [
@@ -26,6 +29,17 @@ export default function MaterialIssueVouchersListPage() {
       { header: 'Thaali Count', accessorKey: 'thaaliCount' },
       { header: 'Total Cost', accessorKey: 'totalCost', cell: (info) => currency(info.getValue()) },
       { header: 'Issue Date', accessorKey: 'issueDate', cell: (info) => (info.getValue() ? new Date(info.getValue()).toLocaleDateString('en-IN') : '—') },
+      {
+        header: '',
+        id: 'actions',
+        cell: (info) => (
+          <Tooltip title="View details">
+            <IconButton size="small" onClick={() => setViewTarget(info.row.original._id)}>
+              <VisibilityOutlinedIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        ),
+      },
     ],
     []
   );
@@ -52,6 +66,7 @@ export default function MaterialIssueVouchersListPage() {
       />
 
       <MaterialIssueVoucherFormDialog open={creating} onClose={() => setCreating(false)} />
+      <MaterialIssueVoucherDetailDialog open={Boolean(viewTarget)} onClose={() => setViewTarget(null)} voucherId={viewTarget} />
     </>
   );
 }

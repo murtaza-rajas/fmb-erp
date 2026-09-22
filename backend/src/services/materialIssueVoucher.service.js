@@ -11,20 +11,21 @@ const { STOCK_TXN_TYPE } = require('../constants/enums');
 // stock-out (like StockReturn, unlike the Thaali Cost Report which is a
 // pure read-side aggregation over these vouchers — see report.service.js).
 async function createMaterialIssueVoucher(payload, actorId) {
-  for (const line of payload.items) {
-    const balance = await stockLedgerService.getBalance(line.itemId, payload.storeId);
-    if (balance < line.quantity) {
-      throw ApiError.conflict(`Insufficient stock to issue item ${line.itemId}: have ${balance}, issuing ${line.quantity}`);
-    }
-  }
-
   // Rate is snapshotted at issue time (mirrors PurchaseOrder's line-item
   // rate/amount) so historical voucher cost stays stable even if an item's
-  // standardRate changes later.
+  // standardRate changes later. Fetched once per line and reused for both the
+  // stock check and the rate snapshot, so an insufficient-stock error can
+  // name the item instead of just its id.
   const items = await Promise.all(
     payload.items.map(async (line) => {
       const item = await itemRepository.findById(line.itemId);
       if (!item) throw ApiError.badRequest(`Item ${line.itemId} not found`);
+
+      const balance = await stockLedgerService.getBalance(line.itemId, payload.storeId);
+      if (balance < line.quantity) {
+        throw ApiError.conflict(`Insufficient stock to issue "${item.name}": have ${balance}, issuing ${line.quantity}`);
+      }
+
       const rate = item.standardRate;
       return { itemId: line.itemId, quantity: line.quantity, rate, lineCost: rate * line.quantity };
     })
@@ -82,12 +83,23 @@ async function createMaterialIssueVoucher(payload, actorId) {
   }
 }
 
-function listMaterialIssueVouchers({ page, limit, sort, filter }) {
+// Search spans the voucher's own number (a direct field) plus the items
+// issued on it (a reference — resolved to matching ids first, same pattern
+// used for PRN/PO/GRN/invoice/adjustment search).
+async function listMaterialIssueVouchers({ page, limit, sort, search, filter }) {
+  const combinedFilter = { ...filter };
+  if (search) {
+    const matchingItems = await itemRepository.model.find({ name: { $regex: search, $options: 'i' } }, { _id: 1 });
+    combinedFilter.$or = [
+      { voucherNumber: { $regex: search, $options: 'i' } },
+      { 'items.itemId': { $in: matchingItems.map((i) => i._id) } },
+    ];
+  }
   return materialIssueRepository.findPaginated({
     page,
     limit,
     sort,
-    filter,
+    filter: combinedFilter,
     populate: 'storeId issuedBy items.itemId',
   });
 }

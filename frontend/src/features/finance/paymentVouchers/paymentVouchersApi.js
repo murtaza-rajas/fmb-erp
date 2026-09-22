@@ -13,6 +13,16 @@ export function usePaymentVouchersQuery(params = {}) {
   });
 }
 
+// Invoices with a remaining unvouchered balance > 0 — backs the "New
+// Voucher" dialog's picker. Excludes invoices already fully covered by a
+// prior pending/approved voucher, unlike the raw invoice list.
+export function useAvailableInvoicesForVoucherQuery() {
+  return useQuery({
+    queryKey: queryKeys.availableInvoicesForVoucher,
+    queryFn: async () => (await axiosClient.get('/finance/payment-vouchers/available-invoices')).data.data,
+  });
+}
+
 function useInvalidateVouchers() {
   const queryClient = useQueryClient();
   return () => {

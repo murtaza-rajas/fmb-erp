@@ -13,6 +13,7 @@ router.use(authenticate);
 router.get('/', authorize(PERMISSIONS.INVOICE_READ), queryParser, invoiceController.list);
 router.post('/', authorize(PERMISSIONS.INVOICE_CREATE), invoiceValidator.create, validate, invoiceController.create);
 router.get('/:id', authorize(PERMISSIONS.INVOICE_READ), invoiceController.getById);
+router.patch('/:id', authorize(PERMISSIONS.INVOICE_UPDATE), invoiceValidator.update, validate, invoiceController.update);
 router.post('/:id/match', authorize(PERMISSIONS.INVOICE_MATCH), invoiceController.match);
 router.get('/:id/match-history', authorize(PERMISSIONS.INVOICE_READ), invoiceController.matchHistory);
 router.patch('/:id/hold', authorize(PERMISSIONS.INVOICE_HOLD), invoiceValidator.hold, validate, invoiceController.hold);

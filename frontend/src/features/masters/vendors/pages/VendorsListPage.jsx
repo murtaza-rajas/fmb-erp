@@ -42,6 +42,8 @@ export default function VendorsListPage() {
       { header: 'Contact Person', accessorKey: 'contactPerson', cell: (info) => info.getValue() || '—' },
       { header: 'Phone', accessorKey: 'phone', cell: (info) => info.getValue() || '—' },
       { header: 'Email', accessorKey: 'email', cell: (info) => info.getValue() || '—' },
+      { header: 'GST No.', accessorKey: 'gstNumber', cell: (info) => info.getValue() || '—' },
+      { header: 'FSSAI No.', accessorKey: 'fssaiNumber', cell: (info) => info.getValue() || '—' },
       {
         header: '',
         id: 'actions',

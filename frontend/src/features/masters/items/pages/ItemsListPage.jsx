@@ -39,6 +39,7 @@ export default function ItemsListPage() {
       { header: 'Name', accessorKey: 'name', meta: { sortKey: 'name' } },
       { header: 'Category', accessorKey: 'categoryId', cell: (info) => info.getValue()?.name || '—' },
       { header: 'Unit', accessorKey: 'unitId', cell: (info) => info.getValue()?.symbol || '—' },
+      { header: 'Current Stock', accessorKey: 'currentStock', cell: (info) => info.getValue() ?? 0 },
       { header: 'Reorder Level', accessorKey: 'reorderLevel' },
       { header: 'Standard Rate', accessorKey: 'standardRate' },
       { header: 'Status', accessorKey: 'isActive', cell: (info) => <Chip size="small" label={info.getValue() ? 'Active' : 'Inactive'} color={info.getValue() ? 'success' : 'default'} variant="outlined" /> },

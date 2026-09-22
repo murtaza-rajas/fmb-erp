@@ -13,6 +13,11 @@ const list = asyncHandler(async (req, res) => {
   ApiResponse.send(res, { data: items, meta: { page, limit, total } });
 });
 
+const availableInvoices = asyncHandler(async (req, res) => {
+  const invoices = await voucherService.getInvoicesAvailableForVoucher();
+  ApiResponse.send(res, { data: invoices });
+});
+
 const getById = asyncHandler(async (req, res) => {
   const voucher = await voucherService.getVoucherById(req.params.id);
   ApiResponse.send(res, { data: voucher });
@@ -28,4 +33,4 @@ const reject = asyncHandler(async (req, res) => {
   ApiResponse.send(res, { data: voucher });
 });
 
-module.exports = { create, list, getById, approve, reject };
+module.exports = { create, list, getById, approve, reject, availableInvoices };

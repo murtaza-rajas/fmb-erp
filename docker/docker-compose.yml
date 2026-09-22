@@ -57,6 +57,14 @@ services:
     build:
       context: ..
       dockerfile: docker/frontend.Dockerfile
+      # Deployed at nagpurjamaat.org/erp (Apache reverse-proxies that path
+      # here, prefix preserved) rather than owning a domain root, since this
+      # server already hosts other unrelated sites on that domain.
+      args:
+        VITE_BASE_PATH: /erp/
+        VITE_API_BASE_URL: /erp/api/v1
+        VITE_SOCKET_URL: ""
+        VITE_SOCKET_PATH: /erp/socket.io
     restart: unless-stopped
     depends_on:
       - backend

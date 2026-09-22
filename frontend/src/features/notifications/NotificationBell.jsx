@@ -72,7 +72,7 @@ export default function NotificationBell() {
               primary={n.title}
               secondary={
                 <>
-                  <Typography variant="body2" color="text.secondary" component="span" display="block">
+                  <Typography variant="body2" color="text.secondary" component="span" display="block" sx={{ whiteSpace: 'pre-line' }}>
                     {n.message}
                   </Typography>
                   <Typography variant="caption" color="text.disabled">

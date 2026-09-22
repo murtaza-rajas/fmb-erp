@@ -8,6 +8,11 @@ const Store = require('../../src/models/Store.model');
 const Item = require('../../src/models/Item.model');
 const Vendor = require('../../src/models/Vendor.model');
 
+// Computed relative to test run time (rather than a fixed literal) so it
+// never drifts into the past — a PRN's neededByDate must be on/after its
+// requisitionDate (defaults to today), a rule enforced by the validator.
+const FAR_FUTURE_NEEDED_BY_DATE = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
+
 beforeAll(async () => {
   await db.connect();
 });
@@ -43,7 +48,7 @@ async function createIssuedPo(quantity) {
   const prnRes = await request(app)
     .post('/api/v1/procurement/requisitions')
     .set('Authorization', `Bearer ${token}`)
-    .send({ storeId, items: [{ itemId, quantity, neededByDate: '2026-08-01' }] });
+    .send({ storeId, items: [{ itemId, quantity, neededByDate: FAR_FUTURE_NEEDED_BY_DATE }] });
 
   const poRes = await request(app)
     .post('/api/v1/procurement/purchase-orders')
@@ -130,6 +135,72 @@ describe('Inventory: GRN over-receipt guard (regression test)', () => {
       .send({ poId, storeId, items: [{ itemId, receivedQty: 1, rejectedQty: 0 }] });
 
     expect(res.status).toBe(409);
+  });
+});
+
+describe('GRN list search — by grnNumber, PO number, vendor name, or item name', () => {
+  test('search matches on grnNumber, the linked PO number, its vendor name, or an item on the GRN', async () => {
+    const { poId } = await createIssuedPo(10);
+    const poRes = await request(app).get(`/api/v1/procurement/purchase-orders/${poId}`).set('Authorization', `Bearer ${token}`);
+    const poNumber = poRes.body.data.poNumber;
+
+    const grnRes = await request(app)
+      .post('/api/v1/inventory/grns')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ poId, storeId, items: [{ itemId, receivedQty: 10, rejectedQty: 0 }] });
+    const grnNumber = grnRes.body.data.grn.grnNumber;
+
+    const byGrnNumber = await request(app).get(`/api/v1/inventory/grns?search=${grnNumber}`).set('Authorization', `Bearer ${token}`);
+    expect(byGrnNumber.body.data).toHaveLength(1);
+
+    const byPoNumber = await request(app).get(`/api/v1/inventory/grns?search=${poNumber}`).set('Authorization', `Bearer ${token}`);
+    expect(byPoNumber.body.data).toHaveLength(1);
+
+    const byVendorName = await request(app).get('/api/v1/inventory/grns?search=Vendor').set('Authorization', `Bearer ${token}`);
+    expect(byVendorName.body.data).toHaveLength(1);
+
+    const byItemName = await request(app).get('/api/v1/inventory/grns?search=Item').set('Authorization', `Bearer ${token}`);
+    expect(byItemName.body.data).toHaveLength(1);
+
+    const noMatch = await request(app).get('/api/v1/inventory/grns?search=NOTHING-MATCHES-THIS').set('Authorization', `Bearer ${token}`);
+    expect(noMatch.body.data).toHaveLength(0);
+  });
+});
+
+describe('Requisition and PO list search — by item name', () => {
+  test('requisition search matches on prnNumber or an item on it', async () => {
+    const prnRes = await request(app)
+      .post('/api/v1/procurement/requisitions')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ storeId, items: [{ itemId, quantity: 5, neededByDate: FAR_FUTURE_NEEDED_BY_DATE }] });
+    const prnNumber = prnRes.body.data.prnNumber;
+
+    const byPrnNumber = await request(app).get(`/api/v1/procurement/requisitions?search=${prnNumber}`).set('Authorization', `Bearer ${token}`);
+    expect(byPrnNumber.body.data).toHaveLength(1);
+
+    const byItemName = await request(app).get('/api/v1/procurement/requisitions?search=Item').set('Authorization', `Bearer ${token}`);
+    expect(byItemName.body.data).toHaveLength(1);
+
+    const noMatch = await request(app).get('/api/v1/procurement/requisitions?search=NOTHING-MATCHES-THIS').set('Authorization', `Bearer ${token}`);
+    expect(noMatch.body.data).toHaveLength(0);
+  });
+
+  test('PO search matches on poNumber, vendor name, or an item on it', async () => {
+    const { poId } = await createIssuedPo(10);
+    const poRes = await request(app).get(`/api/v1/procurement/purchase-orders/${poId}`).set('Authorization', `Bearer ${token}`);
+    const poNumber = poRes.body.data.poNumber;
+
+    const byPoNumber = await request(app).get(`/api/v1/procurement/purchase-orders?search=${poNumber}`).set('Authorization', `Bearer ${token}`);
+    expect(byPoNumber.body.data).toHaveLength(1);
+
+    const byVendorName = await request(app).get('/api/v1/procurement/purchase-orders?search=Vendor').set('Authorization', `Bearer ${token}`);
+    expect(byVendorName.body.data).toHaveLength(1);
+
+    const byItemName = await request(app).get('/api/v1/procurement/purchase-orders?search=Item').set('Authorization', `Bearer ${token}`);
+    expect(byItemName.body.data).toHaveLength(1);
+
+    const noMatch = await request(app).get('/api/v1/procurement/purchase-orders?search=NOTHING-MATCHES-THIS').set('Authorization', `Bearer ${token}`);
+    expect(noMatch.body.data).toHaveLength(0);
   });
 });
 

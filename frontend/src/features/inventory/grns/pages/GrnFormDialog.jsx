@@ -24,6 +24,7 @@ const REJECTION_REASON_OPTIONS = [
 const schema = yup.object({
   poId: yup.string().required('Purchase Order is required'),
   storeId: yup.string().required('Store is required'),
+  cartingCharges: optionalNumber().min(0, 'Cannot be negative'),
   items: yup.array().of(
     yup.object({
       itemId: yup.string().required(),
@@ -39,7 +40,7 @@ export default function GrnFormDialog({ open, onClose }) {
   const { data: purchaseOrders = [] } = useReceivablePurchaseOrdersQuery();
   const { data: storesData } = useStoresQuery({ limit: 100 });
 
-  const methods = useForm({ resolver: yupResolver(schema), defaultValues: { poId: '', storeId: '', items: [] } });
+  const methods = useForm({ resolver: yupResolver(schema), defaultValues: { poId: '', storeId: '', cartingCharges: '', items: [] } });
   const { fields, replace } = useFieldArray({ control: methods.control, name: 'items' });
   const selectedPoId = useWatch({ control: methods.control, name: 'poId' });
   const { data: selectedPo } = usePurchaseOrderQuery(selectedPoId);
@@ -70,7 +71,7 @@ export default function GrnFormDialog({ open, onClose }) {
     try {
       const result = await mutateAsync(payload);
       enqueueSnackbar(`${result.grn.grnNumber} recorded — PO is now ${result.poStatus.replace(/_/g, ' ')}`, { variant: 'success' });
-      methods.reset({ poId: '', storeId: '', items: [] });
+      methods.reset({ poId: '', storeId: '', cartingCharges: '', items: [] });
       onClose();
     } catch {
       // surfaced via error below
@@ -94,6 +95,9 @@ export default function GrnFormDialog({ open, onClose }) {
                 </Grid>
                 <Grid item xs={12} sm={6}>
                   <FormSelect name="storeId" label="Receiving Store" options={storeOptions} />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <FormTextField name="cartingCharges" label="Carting Charges (optional)" type="number" />
                 </Grid>
               </Grid>
 

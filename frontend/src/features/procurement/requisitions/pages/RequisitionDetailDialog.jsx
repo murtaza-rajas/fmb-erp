@@ -12,6 +12,10 @@ export default function RequisitionDetailDialog({ open, onClose, requisition }) 
         <Stack spacing={2}>
           <Stack direction="row" spacing={4}>
             <Stack>
+              <Typography variant="caption" color="text.secondary">Requisition Date</Typography>
+              <Typography variant="body2">{requisition.requisitionDate ? dayjs(requisition.requisitionDate).format('DD MMM YYYY') : '—'}</Typography>
+            </Stack>
+            <Stack>
               <Typography variant="caption" color="text.secondary">Store</Typography>
               <Typography variant="body2">{requisition.storeId?.name}</Typography>
             </Stack>

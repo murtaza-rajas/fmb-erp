@@ -1,6 +1,8 @@
 const { mongoose } = require('../config/db');
 const grnRepository = require('../repositories/grn.repository');
 const purchaseOrderRepository = require('../repositories/purchaseOrder.repository');
+const vendorRepository = require('../repositories/vendor.repository');
+const itemRepository = require('../repositories/item.repository');
 const poStatusHistoryRepository = require('../repositories/poStatusHistory.repository');
 const stockLedgerService = require('./stockLedger.service');
 const debitNoteService = require('./debitNote.service');
@@ -84,6 +86,7 @@ async function createGrn(payload, actorId) {
           items: grnItems,
           receivedBy: actorId,
           isPartial: !allLinesFulfilled,
+          cartingCharges: payload.cartingCharges || 0,
           attachments: payload.attachments || [],
           createdBy: actorId,
           updatedBy: actorId,
@@ -128,8 +131,42 @@ async function createGrn(payload, actorId) {
   }
 }
 
-function listGrns({ page, limit, sort, filter }) {
-  return grnRepository.findPaginated({ page, limit, sort, filter, populate: 'poId storeId receivedBy items.itemId' });
+// Search spans the GRN's own number plus three referenced things (the linked
+// PO's number, its vendor's name, and the items on the GRN) — Grn only
+// stores poId (one PO per GRN, not per-item like VendorInvoice), so
+// resolving matching PO ids covers both the PO-number and vendor-name cases;
+// items.itemId is resolved separately since it lives on the GRN itself.
+// Mirrors the same resolve-to-ids pattern used for invoice search
+// (vendorInvoice.service.js#listInvoices).
+async function listGrns({ page, limit, sort, search, filter = {} }) {
+  const { from, to, ...rest } = filter;
+  const dateFilter = {};
+  if (from || to) {
+    dateFilter.createdAt = {};
+    if (from) dateFilter.createdAt.$gte = new Date(from);
+    if (to) dateFilter.createdAt.$lte = new Date(to);
+  }
+
+  const combinedFilter = { ...rest, ...dateFilter };
+  if (search) {
+    const [posByNumber, vendorsByName, matchingItems] = await Promise.all([
+      purchaseOrderRepository.model.find({ poNumber: { $regex: search, $options: 'i' } }, { _id: 1 }),
+      vendorRepository.model.find({ name: { $regex: search, $options: 'i' } }, { _id: 1 }),
+      itemRepository.model.find({ name: { $regex: search, $options: 'i' } }, { _id: 1 }),
+    ]);
+    const posByVendor = vendorsByName.length
+      ? await purchaseOrderRepository.model.find({ vendorId: { $in: vendorsByName.map((v) => v._id) } }, { _id: 1 })
+      : [];
+    const poIds = [...new Map([...posByNumber, ...posByVendor].map((po) => [po._id.toString(), po._id])).values()];
+
+    combinedFilter.$or = [
+      { grnNumber: { $regex: search, $options: 'i' } },
+      { poId: { $in: poIds } },
+      { 'items.itemId': { $in: matchingItems.map((i) => i._id) } },
+    ];
+  }
+
+  return grnRepository.findPaginated({ page, limit, sort, filter: combinedFilter, populate: 'poId storeId receivedBy items.itemId' });
 }
 
 async function getGrnById(id) {

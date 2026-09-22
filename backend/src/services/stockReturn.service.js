@@ -19,9 +19,12 @@ async function resolveReturnRate(vendorId, itemId) {
 // and removes the returned quantity from stock in the same transaction.
 async function createStockReturn(payload, actorId) {
   for (const line of payload.items) {
-    const balance = await stockLedgerService.getBalance(line.itemId, payload.storeId);
+    const [balance, item] = await Promise.all([
+      stockLedgerService.getBalance(line.itemId, payload.storeId),
+      itemRepository.findById(line.itemId),
+    ]);
     if (balance < line.quantity) {
-      throw ApiError.conflict(`Insufficient stock to return item ${line.itemId}: have ${balance}, returning ${line.quantity}`);
+      throw ApiError.conflict(`Insufficient stock to return "${item?.name || line.itemId}": have ${balance}, returning ${line.quantity}`);
     }
   }
 

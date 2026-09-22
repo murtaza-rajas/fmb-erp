@@ -11,6 +11,15 @@ const { generatePaymentAdvicePdf } = require('./pdf/paymentAdvice.pdf');
 const ApiError = require('../utils/ApiError');
 const { APPROVAL_STATUS, PO_STATUS } = require('../constants/enums');
 
+// An invoice's items each carry their own poId — a consolidated invoice can
+// span several POs, so closing out "the invoice's PO" means closing out
+// every distinct PO its items reference.
+function uniqueIds(ids) {
+  const seen = new Map();
+  for (const id of ids) seen.set(id.toString(), id);
+  return [...seen.values()];
+}
+
 // Processing the payment is the SOP's final step: money moves, the PO is
 // marked paid and closed (both transitions recorded, in the same
 // transaction as the Payment row and the vendor-ledger debit entry).
@@ -25,7 +34,7 @@ async function processPayment(voucherId, payload, actorId) {
   if (existing) throw ApiError.conflict('This voucher has already been paid');
 
   const invoice = await vendorInvoiceRepository.findById(voucher.invoiceId);
-  const po = invoice && (await purchaseOrderRepository.findById(invoice.poId));
+  const poIds = invoice ? uniqueIds(invoice.items.map((line) => line.poId)) : [];
 
   const session = await mongoose.startSession();
   try {
@@ -49,12 +58,15 @@ async function processPayment(voucherId, payload, actorId) {
         { session }
       );
 
-      if (po && po.status === PO_STATUS.PAYMENT_PENDING) {
-        await purchaseOrderRepository.updateById(po._id, { status: PO_STATUS.PAID, updatedBy: actorId }, { session });
-        await poStatusHistoryRepository.record({ poId: po._id, fromStatus: PO_STATUS.PAYMENT_PENDING, toStatus: PO_STATUS.PAID, changedBy: actorId, remarks: `Payment ${payment._id} processed` }, { session });
+      for (const poId of poIds) {
+        const po = await purchaseOrderRepository.findById(poId);
+        if (po && po.status === PO_STATUS.PAYMENT_PENDING) {
+          await purchaseOrderRepository.updateById(po._id, { status: PO_STATUS.PAID, updatedBy: actorId }, { session });
+          await poStatusHistoryRepository.record({ poId: po._id, fromStatus: PO_STATUS.PAYMENT_PENDING, toStatus: PO_STATUS.PAID, changedBy: actorId, remarks: `Payment ${payment._id} processed` }, { session });
 
-        await purchaseOrderRepository.updateById(po._id, { status: PO_STATUS.CLOSED, updatedBy: actorId }, { session });
-        await poStatusHistoryRepository.record({ poId: po._id, fromStatus: PO_STATUS.PAID, toStatus: PO_STATUS.CLOSED, changedBy: actorId, remarks: 'PO closed after payment' }, { session });
+          await purchaseOrderRepository.updateById(po._id, { status: PO_STATUS.CLOSED, updatedBy: actorId }, { session });
+          await poStatusHistoryRepository.record({ poId: po._id, fromStatus: PO_STATUS.PAID, toStatus: PO_STATUS.CLOSED, changedBy: actorId, remarks: 'PO closed after payment' }, { session });
+        }
       }
     });
 

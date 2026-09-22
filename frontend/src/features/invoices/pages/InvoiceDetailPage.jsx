@@ -5,6 +5,7 @@ import {
   Button, Stack, CircularProgress, Alert,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
 import PauseCircleOutlineIcon from '@mui/icons-material/PauseCircleOutline';
 import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
@@ -22,6 +23,7 @@ import {
 } from '../invoicesApi';
 import HoldInvoiceDialog from './HoldInvoiceDialog';
 import OverrideMatchDialog from './OverrideMatchDialog';
+import InvoiceFormDialog from './InvoiceFormDialog';
 
 const currency = (n) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(n || 0);
 
@@ -33,6 +35,7 @@ export default function InvoiceDetailPage() {
   const { enqueueSnackbar } = useSnackbar();
 
   const canMatch = usePermission('invoice:match');
+  const canUpdate = usePermission('invoice:update');
   const canHold = usePermission('invoice:hold');
   const canRelease = usePermission('invoice:release');
   const canOverrideMatch = usePermission('invoice:override_match');
@@ -40,6 +43,7 @@ export default function InvoiceDetailPage() {
   const [holding, setHolding] = useState(false);
   const [releasing, setReleasing] = useState(false);
   const [overriding, setOverriding] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   const { mutateAsync: match, isPending: matching, data: matchResult } = useMatchInvoiceMutation(id);
   const { mutateAsync: release, isPending: releasingRequest } = useReleaseInvoiceMutation(id);
@@ -61,15 +65,20 @@ export default function InvoiceDetailPage() {
   };
 
   const latestDiscrepancies = matchResult?.discrepancies ?? history[0]?.discrepancies ?? [];
+  const poGrnPairs = [...new Map(invoice.items.map((line) => [`${line.poId?._id}:${line.grnId?._id}`, line])).values()];
+  const poGrnSummary = poGrnPairs.map((line) => `${line.poId?.poNumber || '—'} / ${line.grnId?.grnNumber || '—'}`).join(', ');
 
   return (
     <Box>
       <PageHeader
         title={invoice.invoiceNumber}
-        subtitle={`Vendor: ${invoice.vendorId?.name || '—'} · PO: ${invoice.poId?.poNumber || '—'} · GRN: ${invoice.grnId?.grnNumber || '—'}`}
+        subtitle={`Vendor: ${invoice.vendorId?.name || '—'} · PO/GRN: ${poGrnSummary || '—'}`}
         actions={
           <Stack direction="row" spacing={1}>
             <Button startIcon={<ArrowBackIcon />} onClick={() => navigate('/invoices')}>Back</Button>
+            {canUpdate && (invoice.matchStatus === 'pending' || invoice.totalAmount === 0) && (
+              <Button startIcon={<EditOutlinedIcon />} onClick={() => setEditing(true)}>Edit</Button>
+            )}
             {canMatch && (
               <Button variant="contained" startIcon={<CompareArrowsIcon />} onClick={handleMatch} disabled={matching}>
                 {matching ? <CircularProgress size={18} color="inherit" /> : 'Run 3-Way Match'}
@@ -124,6 +133,7 @@ export default function InvoiceDetailPage() {
                 <TableHead>
                   <TableRow>
                     <TableCell>Item</TableCell>
+                    {poGrnPairs.length > 1 && <TableCell>PO / GRN</TableCell>}
                     <TableCell align="right">Quantity</TableCell>
                     <TableCell align="right">Rate</TableCell>
                     <TableCell align="right">Amount</TableCell>
@@ -133,6 +143,9 @@ export default function InvoiceDetailPage() {
                   {invoice.items.map((line, i) => (
                     <TableRow key={i}>
                       <TableCell>{line.itemId?.name || line.itemId}</TableCell>
+                      {poGrnPairs.length > 1 && (
+                        <TableCell>{line.poId?.poNumber || '—'} / {line.grnId?.grnNumber || '—'}</TableCell>
+                      )}
                       <TableCell align="right">{line.quantity}</TableCell>
                       <TableCell align="right">{currency(line.rate)}</TableCell>
                       <TableCell align="right">{currency(line.amount)}</TableCell>
@@ -176,6 +189,7 @@ export default function InvoiceDetailPage() {
         </Grid>
       </Grid>
 
+      <InvoiceFormDialog open={editing} onClose={() => setEditing(false)} invoice={editing ? invoice : undefined} />
       <HoldInvoiceDialog open={holding} onClose={() => setHolding(false)} invoiceId={id} />
       <OverrideMatchDialog open={overriding} onClose={() => setOverriding(false)} invoiceId={id} />
       <ConfirmDialog

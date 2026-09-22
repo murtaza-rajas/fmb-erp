@@ -42,6 +42,14 @@ export function useCreateRequisitionMutation() {
   });
 }
 
+export function useUpdateRequisitionMutation() {
+  const invalidate = useInvalidateRequisitions();
+  return useMutation({
+    mutationFn: ({ id, ...body }) => axiosClient.patch(`/procurement/requisitions/${id}`, body).then((r) => r.data.data),
+    onSuccess: invalidate,
+  });
+}
+
 export function useCancelRequisitionMutation() {
   const invalidate = useInvalidateRequisitions();
   return useMutation({

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box, Card, CardContent, Grid, Typography, Tabs, Tab, List, ListItem, ListItemText,
-  IconButton, Button, Chip, CircularProgress, Stack,
+  IconButton, Button, Chip, CircularProgress, Stack, Link,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AddIcon from '@mui/icons-material/Add';
@@ -13,11 +13,17 @@ import EmptyState from '../../../../components/EmptyState';
 import ErrorState from '../../../../components/ErrorState';
 import ConfirmDialog from '../../../../components/ConfirmDialog';
 import { usePermission } from '../../../../hooks/usePermission';
+import axiosClient from '../../../../services/axiosClient';
 import {
   useVendorQuery, useVendorBankAccountsQuery, useRemoveVendorBankAccountMutation, useVendorItemRatesQuery,
 } from '../vendorsApi';
 import AddBankAccountDialog from './AddBankAccountDialog';
 import AddItemRateDialog from './AddItemRateDialog';
+
+async function viewCertificate(fileKey) {
+  const { data } = await axiosClient.get('/uploads/view-url', { params: { fileKey } });
+  window.open(data.data.viewUrl, '_blank', 'noopener,noreferrer');
+}
 
 function OverviewTab({ vendor }) {
   return (
@@ -28,6 +34,28 @@ function OverviewTab({ vendor }) {
           <Grid item xs={12} sm={6}><Typography variant="caption" color="text.secondary">Phone</Typography><Typography>{vendor.phone || '—'}</Typography></Grid>
           <Grid item xs={12} sm={6}><Typography variant="caption" color="text.secondary">Email</Typography><Typography>{vendor.email || '—'}</Typography></Grid>
           <Grid item xs={12} sm={6}><Typography variant="caption" color="text.secondary">Payment Terms</Typography><Typography>{vendor.paymentTermsId?.name || '—'}</Typography></Grid>
+          <Grid item xs={12} sm={6}>
+            <Typography variant="caption" color="text.secondary">GST No.</Typography>
+            <Stack direction="row" spacing={1.5} alignItems="center">
+              <Typography>{vendor.gstNumber || '—'}</Typography>
+              {vendor.gstCertificateFileKey && (
+                <Link component="button" type="button" variant="body2" onClick={() => viewCertificate(vendor.gstCertificateFileKey)}>
+                  View Certificate
+                </Link>
+              )}
+            </Stack>
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <Typography variant="caption" color="text.secondary">FSSAI No.</Typography>
+            <Stack direction="row" spacing={1.5} alignItems="center">
+              <Typography>{vendor.fssaiNumber || '—'}</Typography>
+              {vendor.fssaiCertificateFileKey && (
+                <Link component="button" type="button" variant="body2" onClick={() => viewCertificate(vendor.fssaiCertificateFileKey)}>
+                  View Certificate
+                </Link>
+              )}
+            </Stack>
+          </Grid>
           <Grid item xs={12}>
             <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>Items Supplied</Typography>
             {(vendor.itemsSupplied || []).length === 0 ? (

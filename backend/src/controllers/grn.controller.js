@@ -8,8 +8,8 @@ const create = asyncHandler(async (req, res) => {
 });
 
 const list = asyncHandler(async (req, res) => {
-  const { page, limit, sort, filter } = req.query.parsed;
-  const { items, total } = await grnService.listGrns({ page, limit, sort, filter });
+  const { page, limit, sort, search, filter } = req.query.parsed;
+  const { items, total } = await grnService.listGrns({ page, limit, sort, search, filter });
   ApiResponse.send(res, { data: items, meta: { page, limit, total } });
 });
 

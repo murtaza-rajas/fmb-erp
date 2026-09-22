@@ -20,15 +20,23 @@ COPY frontend/ .
 #                -f docker/frontend.Dockerfile -t fmb-frontend ..
 ARG VITE_API_BASE_URL=/api/v1
 ARG VITE_SOCKET_URL=""
+ARG VITE_SOCKET_PATH=/socket.io
+ARG VITE_BASE_PATH=/
 ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
 ENV VITE_SOCKET_URL=${VITE_SOCKET_URL}
+ENV VITE_SOCKET_PATH=${VITE_SOCKET_PATH}
+ENV VITE_BASE_PATH=${VITE_BASE_PATH}
 
 RUN npm run build
 
 FROM nginx:1.27-alpine
+# ARGs/ENVs don't carry across build stages — redeclared here so the
+# healthcheck below (which runs in this runtime stage) can see it.
+ARG VITE_BASE_PATH=/
+ENV VITE_BASE_PATH=${VITE_BASE_PATH}
 COPY --from=build /app/dist /usr/share/nginx/html
 COPY docker/nginx/default.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget -qO- http://localhost/ >/dev/null 2>&1 || exit 1
+  CMD wget -qO- "http://127.0.0.1${VITE_BASE_PATH}" >/dev/null 2>&1 || exit 1
